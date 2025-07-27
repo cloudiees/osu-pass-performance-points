@@ -1,0 +1,1 @@
+# TODO: Need to check if the user is linked, if they are delete them from the db

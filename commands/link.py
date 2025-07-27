@@ -24,6 +24,7 @@ def setup(bot):
             return
 
         await asyncio.to_thread(insert_user, ctx.author.id, osu_user.id)
+        # TODO: Add scores and o!ppp to newly linked profile
         await ctx.send(f"Successfully linked {ctx.author.mention} to {osu_user.username}!")
 
     @link.error
