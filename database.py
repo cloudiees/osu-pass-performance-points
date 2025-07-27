@@ -3,7 +3,6 @@ import sqlite3
 
 conn = sqlite3.connect("osu_pass.db")
 cursor = conn.cursor()
-
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users (
     discord_id INTEGER PRIMARY KEY,
@@ -12,7 +11,6 @@ CREATE TABLE IF NOT EXISTS users (
     score_list TEXT
 )
 """)
-
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS maps (
     map_id INTEGER PRIMARY KEY,
@@ -25,6 +23,5 @@ CREATE TABLE IF NOT EXISTS maps (
     fl_mult INTEGER
 )                   
 """)
-
 conn.commit()
 conn.close()

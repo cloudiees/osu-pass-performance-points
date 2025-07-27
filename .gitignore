@@ -5,3 +5,9 @@ osuApiKey.txt
 
 # Python virtual enviorment
 /venv
+
+# Database
+osu_pass.db
+
+__pycache__/
+*.py[cod]
