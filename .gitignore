@@ -1,0 +1,7 @@
+# API key stuff that should never be shared
+discordBotKey.txt
+osuApiId.txt
+osuApiKey.txt
+
+# Python virtual enviorment
+/venv
