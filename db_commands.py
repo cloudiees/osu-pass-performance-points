@@ -1,8 +1,9 @@
 import sqlite3
 from ossapi import Score, Mod
 from osu_api import osu_api
+import asyncio
 
-mod_col = {
+MOD_COL = {
     "EZ": 4,
     "HR": 2,
     "DT": 3,
@@ -11,7 +12,7 @@ mod_col = {
     "FL": 6,
 }
 
-mod_combo_to_index = {
+MOD_COMBO_TO_INDEX = {
     "": 9,
     "HR": 10,
     "DT": 11,
@@ -58,59 +59,67 @@ def find_map(map_id: int):
     
 def delete_user(discord_id: int):
     with sqlite3.connect("osu_pass.db") as conn:
+        conn.execute("PRAGMA foreign_keys = ON")
         cursor = conn.cursor()
         cursor.execute("DELETE FROM users WHERE discord_id = ?", (discord_id,))
         conn.commit()
         
-def insert_score(score: Score):
+def calc_pp(map_info: int, mod_list):
+    initial_pp = map_info[1]
+    final_pp = initial_pp
+    for mod in mod_list:
+        if mod in MOD_COL:
+            final_pp += (map_info[MOD_COL[mod]] - 1) * initial_pp
+    
+    return final_pp
+        
+def calc_sr(map_info: int, mod_list):
+    return map_info[MOD_COMBO_TO_INDEX[str(Mod(mod_list))]]
+
+def insert_score(score: Score, pp: int = None):
     with sqlite3.connect("osu_pass.db") as conn:
         cursor = conn.cursor()
         map_id = score.beatmap_id
         score_id = score.id
         user_id = score.user_id
+        # Getting previous best score on map
         cursor.execute("SELECT * FROM scores WHERE user_osu_id = ? AND map_id = ?", (user_id, map_id))
         prev_score = cursor.fetchone()
         mod_list = []
         mod_list_cleaned = []
+        # Getting all mods, string is for db and list is for calcs
         for mod in score.mods:
             mod_name = mod.acronym
             mod_list.append(mod_name)
             if mod_name == "NC":
                 mod_list_cleaned.append("DT")
-            elif mod_name in mod_col:
+            elif mod_name in MOD_COL:
                 mod_list_cleaned.append(mod_name)
-            
+        # ossapi breaks with CL so removing it    
         if "CL" in mod_list:
             mod_list.remove("CL")
-            
+        
         if mod_list:
             mod_str = str(Mod(''.join(mod_list)))
         else:
             mod_str = ""
-            
-        cursor.execute("SELECT * FROM maps WHERE map_id = ?", (map_id,))
-        map_info = cursor.fetchone()
-        initial_pp = map_info[1]
-        final_pp = initial_pp
-        for mod in mod_list:
-            if mod in mod_col:
-                final_pp += (map_info[mod_col[mod]] - 1) * initial_pp
         
+        map_info = find_map(map_id)
+        if pp:
+            final_pp = pp
+            star_rating = calc_sr(map_info, mod_list_cleaned)
+        else:
+            final_pp = calc_pp(map_info, mod_list_cleaned)
+            star_rating = calc_sr(map_info, mod_list_cleaned)
+            
         if prev_score:
             if prev_score[3] >= final_pp:
                 raise Exception("Previous score with geq pp")
             
             delete_score(prev_score)
-        
-        if mod_list:
-            mod_clean_str = str(Mod(''.join(mod_list_cleaned)))
-        else:
-            mod_clean_str = ""
-        star_rating = map_info[mod_combo_to_index[mod_clean_str]]
-        cursor.execute("INSERT INTO scores (score_id, user_osu_id, map_id, performance_points, mods, star_rating) VALUES (?, ?, ?, ?, ?, ?)", (score_id, user_id, map_id, final_pp, mod_str, star_rating))
-        
+            
+        cursor.execute("INSERT INTO scores (score_id, user_osu_id, map_id, performance_points, mods, star_rating) VALUES (?, ?, ?, ?, ?, ?)", (score_id, user_id, map_id, final_pp, mod_str, star_rating))        
         cursor.execute("UPDATE users SET total_performance_points = total_performance_points + ? WHERE osu_id = ?", (final_pp, user_id))
-        
         print("success")
         conn.commit()
                 
@@ -149,4 +158,10 @@ def get_top(user_id: int, stars: bool, reverse: bool):
     with sqlite3.connect("osu_pass.db") as conn:
         cursor = conn.cursor()
         cursor.execute(query, (user_id,))
+        return cursor.fetchall()
+    
+def get_all_maps():
+    with sqlite3.connect("osu_pass.db") as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM maps")
         return cursor.fetchall()
