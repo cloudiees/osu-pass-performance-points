@@ -3,7 +3,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from osu_api import osu_api
-from db_commands import search_disc_user, search_osu_user, insert_user
+from db_commands import search_disc_user, search_osu_user, insert_user, delete_user
 
 class Link(commands.Cog):
     def __init__(self, bot):
@@ -39,8 +39,10 @@ class Link(commands.Cog):
     @app_commands.command(name="unlink", description="todo")
     async def unlink(self, interaction: discord.Interaction):
         print("trying to execute")
-        await interaction.response.send_message("yuh5")
-        print("successfully executed")
+        if await asyncio.to_thread(search_disc_user, interaction.user.id):
+            await asyncio.to_thread(delete_user, interaction.user.id)
+            await interaction.response.send_message("Successfully unlinked account!")             
+        await interaction.response.send_message("Your account is currently unlinked.")
     
 async def setup(bot):
     await bot.add_cog(Link(bot))

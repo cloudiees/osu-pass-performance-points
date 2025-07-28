@@ -24,4 +24,8 @@ def find_map(map_id):
         cursor.execute("SELECT * FROM maps WHERE map_id = ?", (map_id,))
         return cursor.fetchone()
     
-    
+def delete_user(discord_id):
+    with sqlite3.connect("osu_pass.db") as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM users WHERE discord_id = ?", (discord_id,))
+        conn.commit()
