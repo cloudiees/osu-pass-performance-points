@@ -1,1 +1,0 @@
-# TODO: Fetch user's most recent score and attempt to submit that

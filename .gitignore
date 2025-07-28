@@ -11,3 +11,5 @@ osu_pass.db
 
 __pycache__/
 *.py[cod]
+
+mapsubmitter9000.py

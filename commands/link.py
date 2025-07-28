@@ -1,33 +1,46 @@
 import asyncio
+import discord
 from discord.ext import commands
+from discord import app_commands
 from osu_api import osu_api
 from db_commands import search_disc_user, search_osu_user, insert_user
 
-def setup(bot):
-    @bot.command()
-    async def link(ctx, user: str):
-        if await asyncio.to_thread(search_disc_user, ctx.author.id):
-            await ctx.send("This Discord account is already linked to an osu! account.")
+class Link(commands.Cog):
+    def __init__(self, bot):
+        super().__init__()
+        self.bot = bot;
+    
+    @app_commands.command(name="link", description="links osu! profile to your discord")
+    @app_commands.describe(user="Your osu! username")
+    async def link(self, interaction: discord.Interaction, user: str):
+        print("trying to execute")
+        if await asyncio.to_thread(search_disc_user, interaction.user.id):
+            await interaction.response.send_message("This Discord account is already linked to an osu! account.")
             return
-
+        print("trying to find osu info")
         try:
             osu_user = await asyncio.wait_for(osu_api.user(user), timeout=10)
+            print("got osu info")
         except asyncio.TimeoutError:
-            await ctx.send("osu! API request timed out, please try again later.")
+            await interaction.response.send_message("osu! API request timed out, please try again later.")
             return
         except Exception:
-            await ctx.send("Something went wrong. Please ensure the username is correct.")
+            await interaction.response.send_message("Something went wrong. Please ensure the username is correct.")
             return
-
+        print("trying to check if alr linked")
         if osu_user and await asyncio.to_thread(search_osu_user, osu_user.id):
-            await ctx.send("This osu! account is already linked.")
+            await interaction.response.send_message("This osu! account is already linked.")
             return
 
-        await asyncio.to_thread(insert_user, ctx.author.id, osu_user.id)
+        await asyncio.to_thread(insert_user, interaction.user.id, osu_user.id)
         # TODO: Add scores and o!ppp to newly linked profile
-        await ctx.send(f"Successfully linked {ctx.author.mention} to {osu_user.username}!")
-
-    @link.error
-    async def link_error(ctx, error):
-        if isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send("Usage: `!link <osu_username>`")
+        await interaction.response.send_message(f"Successfully linked {interaction.user.mention} to {osu_user.username}!")
+           
+    @app_commands.command(name="unlink", description="todo")
+    async def unlink(self, interaction: discord.Interaction):
+        print("trying to execute")
+        await interaction.response.send_message("yuh5")
+        print("successfully executed")
+    
+async def setup(bot):
+    await bot.add_cog(Link(bot))
