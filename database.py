@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS maps (
     map_id INTEGER PRIMARY KEY,
-    performance_points INTEGER,
+    performance_points REAL,
     hr_mult REAL,
     dt_mult REAL,
     ez_mult REAL,
