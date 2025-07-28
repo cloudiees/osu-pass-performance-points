@@ -33,7 +33,7 @@ class Link(commands.Cog):
             return
 
         await asyncio.to_thread(insert_user, interaction.user.id, osu_user.id, interaction.user.name, user)
-        # TODO: Add scores and o!ppp to newly linked profile
+
         await interaction.response.send_message(f"Successfully linked {interaction.user.mention} to {osu_user.username}!")
            
     @app_commands.command(name="unlink", description="todo")
