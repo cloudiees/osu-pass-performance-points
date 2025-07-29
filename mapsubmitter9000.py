@@ -6,8 +6,8 @@ import asyncio
 conn = sqlite3.connect("osu_pass.db")
 cursor = conn.cursor()
 
-map_id = 4876550
-pp = 22
+map_id = 5041003
+pp = 10000
 
 async def get_map():
     return await osu_api.beatmap(map_id)

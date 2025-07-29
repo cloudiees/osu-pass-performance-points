@@ -13,7 +13,7 @@ MOD_COL = {
 }
 
 MOD_COMBO_TO_INDEX = {
-    "": 9,
+    "NM": 9,
     "HR": 10,
     "DT": 11,
     "EZ": 12,
@@ -78,6 +78,7 @@ def calc_sr(map_info: int, mod_list):
 
 def insert_score(score: Score, pp: int = None):
     with sqlite3.connect("osu_pass.db") as conn:
+        print("starting submission")
         cursor = conn.cursor()
         map_id = score.beatmap_id
         score_id = score.id
@@ -85,8 +86,10 @@ def insert_score(score: Score, pp: int = None):
         # Getting previous best score on map
         cursor.execute("SELECT * FROM scores WHERE user_osu_id = ? AND map_id = ?", (user_id, map_id))
         prev_score = cursor.fetchone()
+        print("got prev score info")
         mod_list = []
         mod_list_cleaned = []
+        print(f"mod list: {score.mods}")
         # Getting all mods, string is for db and list is for calcs
         for mod in score.mods:
             mod_name = mod.acronym
@@ -95,6 +98,7 @@ def insert_score(score: Score, pp: int = None):
                 mod_list_cleaned.append("DT")
             elif mod_name in MOD_COL:
                 mod_list_cleaned.append(mod_name)
+        print(f"got clean list {mod_list_cleaned} and other stuff")
         # ossapi breaks with CL so removing it    
         if "CL" in mod_list:
             mod_list.remove("CL")
@@ -102,23 +106,30 @@ def insert_score(score: Score, pp: int = None):
         if mod_list:
             mod_str = str(Mod(''.join(mod_list)))
         else:
-            mod_str = ""
+            mod_str = "NM"
+        print(f"got mod string: {mod_str}")
         
         map_info = find_map(map_id)
+        print("got map info")
         if pp:
             final_pp = pp
             star_rating = calc_sr(map_info, mod_list_cleaned)
         else:
+            print("getting pp and sr info")
             final_pp = calc_pp(map_info, mod_list_cleaned)
+            print("got pp")
             star_rating = calc_sr(map_info, mod_list_cleaned)
-            
+            print("got sr")
+        print("god help")
         if prev_score:
             if prev_score[3] >= final_pp:
+                print("que")
                 raise Exception("Previous score with geq pp")
             
             delete_score(prev_score)
-            
-        cursor.execute("INSERT INTO scores (score_id, user_osu_id, map_id, performance_points, mods, star_rating) VALUES (?, ?, ?, ?, ?, ?)", (score_id, user_id, map_id, final_pp, mod_str, round(star_rating,2)))  
+        
+        print("baller i am")
+        cursor.execute("INSERT INTO scores (score_id, user_osu_id, map_id, performance_points, mods, star_rating) VALUES (?, ?, ?, ?, ?, ?)", (score_id, user_id, map_id, round(final_pp, 2), mod_str, round(star_rating,2)))  
         cursor.execute("UPDATE users SET total_performance_points = total_performance_points + ? WHERE osu_id = ?", (round(final_pp, 2), user_id))
         print("success")
         conn.commit()
@@ -164,4 +175,10 @@ def get_all_maps():
     with sqlite3.connect("osu_pass.db") as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM maps")
+        return cursor.fetchall()
+    
+def get_all_users():
+    with sqlite3.connect("osu_pass.db") as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT osu_id FROM users")
         return cursor.fetchall()
