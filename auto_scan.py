@@ -24,6 +24,7 @@ async def scan_recent():
                     except Exception as e:
                         print(f"there is a better score alr or: {e}")
                         continue
+            await asyncio.sleep(0.5)
             
         print("i slep")
         await asyncio.sleep(600)
