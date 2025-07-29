@@ -44,14 +44,16 @@ async def illegal_mod_detection(score: Score, interaction: discord.Interaction):
         print("illegal mod located")
         if illegal_mod == "-CL":
             print("no cl found")
-            await interaction.response.send_message("This score is not set on stable.")
+            embed = discord.Embed(title="Invalid Score", description="This score was not set on stable.", color=discord.Color.red())
+            await interaction.response.send_message(embed=embed)
         # Enable if I want loved maps to be ranked
         # elif illegal_mod == "-S":
         #     print("mod setting found")
         #     await interaction.response.send_message("This score uses mod settings.")
         else:
             print("other illegal mod")
-            await interaction.response.send_message(f"{illegal_mod} is an illegal mod, score will not be submitted.")
+            embed = discord.Embed(title="Invalid Score", description=f"**{illegal_mod}** is an illegal mod, score will not be submitted.", color=discord.Color.red())
+            await interaction.response.send_message(embed=embed)
         return True
     print("no illegal mods")
     return False
@@ -104,10 +106,12 @@ class Submit(commands.Cog):
         # print(f"got score info for {score.beatmap_id} which is {isinstance(score.beatmap_id, int)}")
         user_db_row = await asyncio.to_thread(search_disc_user, interaction.user.id)
         if not user_db_row:
-            await interaction.response.send_message("Please link your account before submitting a score!")
+            embed = discord.Embed(title="Not Yet Linked", description="Please link your account before submitting a score by using `/link <osu_username>`.", color=discord.Color.orange())
+            await interaction.response.send_message(embed=embed)
         elif score.user_id != user_db_row[1]:
             user = await osu_api.user(user_db_row[1])
-            await interaction.response.send_message(f"Sorry, but your discord account is linked to {user.username}. The score you are trying to submit is from {score._user.username}.")
+            embed = discord.Embed(title="Invalid User", description=f"Your discord account is linked to {user.username}. The score you are trying to submit is from {score._user.username}.", color=discord.Color.orange())
+            await interaction.response.send_message(embed=embed)
             return
         
         if await asyncio.to_thread(find_map, score.beatmap_id):
@@ -121,18 +125,22 @@ class Submit(commands.Cog):
                 try:
                     await asyncio.to_thread(insert_score, score)
                     print("inserted score")
-                    await interaction.response.send_message("Score submitted!")
-                except Exception as e:
-                    await interaction.response.send_message(str(e))
+                    embed = discord.Embed(title="Success", description="Score successfully submitted!", color=discord.Color.green())
+                    await interaction.response.send_message(embed=embed)
+                except Exception:
+                    embed = discord.Embed(title="Lower o!ppp Score", description=f"You already have a score on **{score.beatmapset.title} [{score.beatmap.version}]** with a higher or equal o!ppp value!", color=discord.Color.orange())
+                    await interaction.response.send_message(embed=embed)
                 
                 return
             else:
-                await interaction.response.send_message("HOW DARE YOU TRY TO SEND A LAZER SCORE YOU HEATHEN")
+                embed = discord.Embed(title="Unranked Score", description="This score is not ranked.", color=discord.Color.red())
+                await interaction.response.send_message(embed=embed)
                 return
                 
         else:
             # print("map not in db")
-            await interaction.response.send_message("This map is not a valid pass map.")
+            embed = discord.Embed(title="Invalid Map", description=f"**{score.beatmapset.title} [{score.beatmap.version}]** is not a valid map.", color=discord.Color.red())
+            await interaction.response.send_message(embed=embed)
     
     @app_commands.command(name="autosubmit", description="todo")
     async def autosubmit(self, interaction: discord.Interaction):
@@ -153,27 +161,33 @@ class Submit(commands.Cog):
                 if minutes > 0 or hours > 0:
                     resp_str += f" {minutes} minutes"
                 resp_str += f" {seconds} seconds before using this command again!"
-                await interaction.response.send_message(content=resp_str)
+                embed = discord.Embed(title="Command on Cooldown", description=resp_str, color=discord.Color.red())
+                await interaction.response.send_message(embed=embed)
                 print(f"{resp_str} + actual seconds: {remaining_seconds}")
                 return
         
         user_db_row = await asyncio.to_thread(search_disc_user, interaction.user.id)
         if user_db_row:
+            embed = discord.Embed(title="Auto Submit", description="Beginning auto submit...", color=discord.Color.yellow())
             user_cooldowns[user_disc_id] = curr_time
             message_log = "Beginning auto submit...\n"
             map_list = get_all_maps()
             await interaction.response.defer(thinking=True)
             map_counter = 0
+            embed = discord.Embed(title="Auto Submit", description="Beginning auto submit...", color=discord.Color.yellow())
+            await interaction.edit_original_response(embed=embed)
             for map in map_list:
                 if map_counter % 20 == 0 and map_counter > 0:
                     for i in range(20, 0, -1):
-                        await interaction.edit_original_response(content=f"Waiting {i} seconds so the osu!api doesn't get mad...")
+                        embed.description = f"Waiting {i} seconds so the osu!api doesn't get mad..."
+                        await interaction.edit_original_response(embed=embed)
                         await asyncio.sleep(1)
                     
                 map_counter += 1
                 print(f"checking map with id {map[0]}")
                 message_log += f"Checking map id {map[0]}...\n"
-                await interaction.edit_original_response(content=f"Checking map id {map[0]}...\n")
+                embed.description = f"Checking map id {map[0]}..."
+                await interaction.edit_original_response(embed=embed)
                 best_score:Score = None
                 best_score_pp = -1
                 print("getting score list")
@@ -201,7 +215,8 @@ class Submit(commands.Cog):
                         await asyncio.to_thread(insert_score, best_score, best_score_pp)
                         print("submitted best score!")
                         message_log += f"Submitted score for map id {map[0]}\n"
-                        await interaction.edit_original_response(content=f"Submitted score for map id {map[0]}\n")
+                        embed.description = f"Submitted score for map id {map[0]}..."
+                        await interaction.edit_original_response(embed=embed)
 
                     except Exception:
                         continue
@@ -210,10 +225,13 @@ class Submit(commands.Cog):
             
             message_log += "Auto submission compelete!"
             print(message_log)
-            await interaction.edit_original_response(content="Auto submission compelete!")
+            embed.description = "Auto submission complete!"
+            embed.color = discord.Color.green()
+            await interaction.edit_original_response(embed=embed)
     
         else:
-            await interaction.response.send_message("Please link your account using `/link <osu!username>` before using this command!")
+            embed = discord.Embed(title="Not Yet Linked", description="Please link your account before submitting a score by using `/link <osu_username>`.", color=discord.Color.orange())
+            await interaction.response.send_message(embed=embed)
             return
     
     @app_commands.command(name="submit_recent", description="todo")
@@ -229,15 +247,20 @@ class Submit(commands.Cog):
                 print("attempting to submit score")
                 try:
                     await asyncio.to_thread(insert_score, recent_score)
-                    await interaction.response.send_message("Score submitted!")
-                except Exception as e:
-                    await interaction.response.send_message(str(e))
+                    embed = discord.Embed(title="Success", description="Score successfully submitted!", color=discord.Color.green())
+                    await interaction.response.send_message(embed=embed)
+                except Exception:
+                    embed = discord.Embed(title="Lower o!ppp Score", description=f"You already have a score on **{recent_score.beatmapset.title} [{recent_score.beatmap.version}]** with a higher or equal o!ppp value!", color=discord.Color.orange())
+                    await interaction.response.send_message(embed=embed)
                     
                 return
                 
-            await interaction.response.send_message("This map is not a valid pass map.")
+            embed = discord.Embed(title="Invalid Map", description=f"**{recent_score.beatmapset.title} [{recent_score.beatmap.version}]** is not a valid map.", color=discord.Color.red())
+            await interaction.response.send_message(embed=embed)
             return
-        await interaction.response.send_message("Please link your account using `/link <osu!username>` before using this command!")
+        
+        embed = discord.Embed(title="Not Yet Linked", description="Please link your account before submitting a score by using `/link <osu_username>`.", color=discord.Color.orange())
+        await interaction.response.send_message(embed=embed)
         
 async def setup(bot):
     await bot.add_cog(Submit(bot))
