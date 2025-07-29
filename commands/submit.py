@@ -136,10 +136,12 @@ class Submit(commands.Cog):
     
     @app_commands.command(name="autosubmit", description="todo")
     async def autosubmit(self, interaction: discord.Interaction):
+        print(f"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA{user_cooldowns}")
         user_disc_id = interaction.user.id
         curr_time = time.time()
         if user_disc_id in user_cooldowns:
             last_used = user_cooldowns[user_disc_id]
+            print(f"Last used: {last_used}, Current time: {curr_time}, Last used - Current time: {last_used - curr_time}, Curren time - Last used: {curr_time - last_used}, calc: {COOLDOWN_SECONDS - (curr_time - last_used)}")
             if curr_time - last_used < COOLDOWN_SECONDS:
                 remaining_seconds = int(COOLDOWN_SECONDS - (curr_time - last_used))                
                 hours = remaining_seconds // 3600
@@ -152,7 +154,8 @@ class Submit(commands.Cog):
                     resp_str += f" {minutes} minutes"
                 resp_str += f" {seconds} seconds before using this command again!"
                 await interaction.response.send_message(content=resp_str)
-                return     
+                print(f"{resp_str} + actual seconds: {remaining_seconds}")
+                return
         
         user_db_row = await asyncio.to_thread(search_disc_user, interaction.user.id)
         if user_db_row:
@@ -160,14 +163,25 @@ class Submit(commands.Cog):
             message_log = "Beginning auto submit...\n"
             map_list = get_all_maps()
             await interaction.response.defer(thinking=True)
-            
+            map_counter = 0
             for map in map_list:
+                if map_counter % 20 == 0 and map_counter > 0:
+                    for i in range(20, 0, -1):
+                        await interaction.edit_original_response(content=f"Waiting {i} seconds so the osu!api doesn't get mad...")
+                        await asyncio.sleep(1)
+                    
+                map_counter += 1
                 print(f"checking map with id {map[0]}")
                 message_log += f"Checking map id {map[0]}...\n"
-                await interaction.edit_original_response(content=message_log)
+                await interaction.edit_original_response(content=f"Checking map id {map[0]}...\n")
                 best_score:Score = None
                 best_score_pp = -1
+                print("getting score list")
                 score_list = await osu_api.beatmap_user_scores(map[0], user_db_row[1])
+                print("score list get!")
+                if not score_list:
+                    continue
+                
                 for score in score_list:
                     print("lord forgive me for i have sinned")
                     mod_list = illegal_mod_and_clean_mod_list(score) # will be None if there is an illegal mod
@@ -187,13 +201,16 @@ class Submit(commands.Cog):
                         await asyncio.to_thread(insert_score, best_score, best_score_pp)
                         print("submitted best score!")
                         message_log += f"Submitted score for map id {map[0]}\n"
-                        await interaction.edit_original_response(content=message_log)
+                        await interaction.edit_original_response(content=f"Submitted score for map id {map[0]}\n")
 
                     except Exception:
                         continue
+                
+                await asyncio.sleep(1)
             
             message_log += "Auto submission compelete!"
-            await interaction.edit_original_response(content=message_log)
+            print(message_log)
+            await interaction.edit_original_response(content="Auto submission compelete!")
     
         else:
             await interaction.response.send_message("Please link your account using `/link <osu!username>` before using this command!")

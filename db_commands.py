@@ -118,8 +118,8 @@ def insert_score(score: Score, pp: int = None):
             
             delete_score(prev_score)
             
-        cursor.execute("INSERT INTO scores (score_id, user_osu_id, map_id, performance_points, mods, star_rating) VALUES (?, ?, ?, ?, ?, ?)", (score_id, user_id, map_id, final_pp, mod_str, star_rating))        
-        cursor.execute("UPDATE users SET total_performance_points = total_performance_points + ? WHERE osu_id = ?", (final_pp, user_id))
+        cursor.execute("INSERT INTO scores (score_id, user_osu_id, map_id, performance_points, mods, star_rating) VALUES (?, ?, ?, ?, ?, ?)", (score_id, user_id, map_id, final_pp, mod_str, round(star_rating,2)))  
+        cursor.execute("UPDATE users SET total_performance_points = total_performance_points + ? WHERE osu_id = ?", (round(final_pp, 2), user_id))
         print("success")
         conn.commit()
                 
