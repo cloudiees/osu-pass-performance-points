@@ -5,6 +5,7 @@ from discord.ext import commands
 from discord import app_commands
 from osu_api import osu_api
 from db_commands import get_leaderboard, get_top, search_disc_user, search_osu_user
+from console import print_to_console
 
 class PageView(discord.ui.View):
     def __init__(self, *, user_id: int, pages: list[discord.Embed]):
@@ -40,6 +41,7 @@ class Tops(commands.Cog):
     
     @app_commands.command(name="leaderboard", description="Displays leaderboard")
     async def leaderboard(self, interaction: discord.Interaction):
+        print_to_console(f"User {interaction.user.id} is attempting to access the leaderboard")
         leaderboard_data = await asyncio.to_thread(get_leaderboard)
         pages: list[discord.Embed] = []
 
@@ -53,19 +55,25 @@ class Tops(commands.Cog):
             )
             embed.set_footer(text=f"Page {(i // 10) + 1} of {(len(leaderboard_data) - 1) // 10 + 1}")
             pages.append(embed)
-
-        view = PageView(user_id=interaction.user.id, pages=pages)
-        await interaction.response.send_message(embed=pages[0], view=view)
+        if len(pages) == 0:
+            embed = discord.Embed(title="No Profiles", description="There are no profiles to display", color=discord.Color.orange())
+            await interaction.response.send_message(embed=embed)
+        else:
+            view = PageView(user_id=interaction.user.id, pages=pages)
+            await interaction.response.send_message(embed=pages[0], view=view)
+        print_to_console(f"User {interaction.user.id}'s request was successful")
         
     @app_commands.command(name="top", description="Get top plays")
     @app_commands.describe(user="osu! username", sort_by_stars="Sort by stars instead of o!ppp", sort_reverse="Sort in reverse order")
     async def top(self, interaction: discord.Interaction, user: str = None, sort_by_stars: bool = False, sort_reverse: bool = False):
+        print_to_console(f"User {interaction.user.id} is attempting to access their top plays")
         user_osu_id = None
         if user is None:
             user_data = (await asyncio.to_thread(search_disc_user, interaction.user.id))
             if user_data is None:
                 embed = discord.Embed(title="Not Yet Linked", description="Please link your account before looking at your top plays by using `/link <osu_username>`.", color=discord.Color.orange())
                 await interaction.response.send_message(embed=embed)
+                print_to_console(f"User {interaction.user.id}'s tops request failed because their account is not linked")
                 return
             
             user_osu_id = user_data[1]
@@ -73,9 +81,10 @@ class Tops(commands.Cog):
         else:
             try:
                 osu_user_data = await osu_api.user(user)
-            except Exception:
+            except Exception as e:
                 embed = discord.Embed(title="Error", description="Something went wrong. Please make sure you entered the username in correctly.", color=discord.Color.orange())
                 await interaction.response.send_message(embed=embed)
+                print_to_console(f"User {interaction.user.id}'s tops request failed because: {e}")
                 return
             
             user_data = (await asyncio.to_thread(search_osu_user, osu_user_data.id))
@@ -99,9 +108,13 @@ class Tops(commands.Cog):
             )
             embed.set_footer(text=f"Page {(i // 10) + 1} of {(len(top_data) - 1) // 10 + 1}")
             pages.append(embed)
-
-        view = PageView(user_id=interaction.user.id, pages=pages)
-        await interaction.response.send_message(embed=pages[0], view=view)
+        if len(pages) == 0:
+            embed = discord.Embed(title="No Scores", description="There are no scores to display", color=discord.Color.orange())
+            await interaction.response.send_message(embed=embed)
+        else:
+            view = PageView(user_id=interaction.user.id, pages=pages)
+            await interaction.response.send_message(embed=pages[0], view=view)
+        print_to_console(f"User {interaction.user.id}'s tops request was successful")
         
 async def setup(bot):
     await bot.add_cog(Tops(bot))
