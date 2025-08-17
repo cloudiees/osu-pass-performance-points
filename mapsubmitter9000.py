@@ -4,8 +4,24 @@ import ossapi
 import asyncio
 import math
 import database
+import argparse
+import pyttanko
+import requests
 # This entire code is a crime towards the osu api
+parser = argparse.ArgumentParser(description="idk man")
 
+parser.add_argument(
+    "-m", "--mapid", 
+    type=int, 
+    help="Map ID"
+)
+parser.add_argument(
+    "-r", "--rank",
+    type=int,
+    help="Map Rank"
+)
+
+args = parser.parse_args()
 
 async def get_map(map_id):
     """
@@ -19,7 +35,6 @@ async def get_map(map_id):
     """
     return await osu_api.beatmap(map_id)
 
-
 async def get_sr(mods: str, map: ossapi.Beatmap):
     """
     Gets star rating of a specific mod combo for a map
@@ -29,10 +44,22 @@ async def get_sr(mods: str, map: ossapi.Beatmap):
     mods (str): Mod combo string
     
     Returns: 
-    float: Calculated star rating
+    tuple: Calculated star rating, calculated fl mult, calculated hr mult, calculated dt mult
     """
     map_attr = await osu_api.beatmap_attributes(map.id, mods=ossapi.Mod(mods))
-    return map_attr.attributes.star_rating
+    return round(map_attr.attributes.star_rating, 2)
+
+def calc_mults(map: ossapi.Beatmap):
+    od = map.difficulty_rating
+    cs = map.cs
+    hp = map.drain
+    ar = map.ar
+    _, ar_hr, od_hr, cs_hr, hp_hr = pyttanko.mods_apply(mods=pyttanko.mods_from_str("HR"), ar=ar, od=od, cs=cs, hp=hp)
+    hr_mult = 1 + (od_hr - od) * .05 + (cs_hr - cs) * .1 + (hp_hr - hp) * .05
+    _, ar_dt, od_dt, cs_dt, hp_dt = pyttanko.mods_apply(mods=pyttanko.mods_from_str("DT"), ar=ar, od=od, cs=cs, hp=hp)
+    dt_mult = 1.2 + (od_dt - od) * .15 + (cs_dt - cs) * .25 + (hp_dt - hp) * .15
+    fl_mult = round(1.4 + ((map.total_length / 60) * .1), 2)
+    return (round(hr_mult,2), round(dt_mult,2), round(fl_mult,2))
 
 def submit_map(map_id:int,rank:int):
     with sqlite3.connect("osu_pass.db") as conn:
@@ -41,59 +68,29 @@ def submit_map(map_id:int,rank:int):
         cursor = conn.cursor()
         sr_hr = asyncio.run(get_sr("HR", map))
         sr_dt = asyncio.run(get_sr("DT", map))
-        # sr_ez = asyncio.run(get_sr("EZ", map))
         sr_fl = asyncio.run(get_sr("FL", map))
-        # sr_ht = asyncio.run(get_sr("HT", map))
-        # sr_htez = asyncio.run(get_sr("HTEZ", map))
-        # sr_hthr = asyncio.run(get_sr("HTHR", map))
         sr_hrdt = asyncio.run(get_sr("HRDT", map))
-        # sr_ezdt = asyncio.run(get_sr("EZDT", map))
         sr_dtfl = asyncio.run(get_sr("DTFL", map))
         sr_hrfl = asyncio.run(get_sr("HRFL", map))
-        # sr_ezfl = asyncio.run(get_sr("EZFL", map))
-        # sr_htfl = asyncio.run(get_sr("HTFL", map))
         sr_hrdtfl = asyncio.run(get_sr("HRDTFL", map))
-        # sr_ezdtfl = asyncio.run(get_sr("EZDTFL", map))
-        # sr_hrhtfl = asyncio.run(get_sr("HRHTFL", map))
-        # sr_ezhtfl = asyncio.run(get_sr("EZHTFL", map))
-
-        # cursor.execute(
-        #     """
-        #     INSERT INTO maps (
-        #         map_id, map_rank, map_name, diff_name, sr_nm,
-        #         sr_hr, sr_dt, sr_ez, sr_fl, sr_ht,
-        #         sr_htez, sr_hthr, sr_hrdt, sr_ezdt, sr_dtfl,
-        #         sr_hrfl, sr_ezfl, sr_htfl, sr_hrdtfl, sr_ezdtfl,
-        #         sr_hrhtfl, sr_ezhtfl, pp
-        #     ) VALUES (?, ?, ?, ?, ?,
-        #               ?, ?, ?, ?, ?,
-        #               ?, ?, ?, ?, ?,
-        #               ?, ?, ?, ?, ?,
-        #               ?, ?, ?)
-        #     """,
-        #     (
-        #         map_id, rank, map._beatmapset.title, map.version, round(map.difficulty_rating, 2),
-        #         round(sr_hr, 2), round(sr_dt, 2), round(sr_ez, 2), round(sr_fl, 2), round(sr_ht, 2),
-        #         round(sr_htez, 2), round(sr_hthr, 2), round(sr_hrdt, 2), round(sr_ezdt, 2), round(sr_dtfl, 2),
-        #         round(sr_hrfl, 2), round(sr_ezfl, 2), round(sr_htfl, 2), round(sr_hrdtfl, 2), round(sr_ezdtfl, 2),
-        #         round(sr_hrhtfl, 2), round(sr_ezhtfl, 2), round(800 * math.pow((2*rank), -0.3) + 200, 2)
-        #     )
-        # )
-
+        hr_mult, dt_mult, fl_mult = calc_mults(map)
         cursor.execute(
             """
             INSERT INTO maps (
                 map_id, map_rank, map_name, diff_name, sr_nm,
                 sr_hr, sr_dt, sr_fl, sr_hrdt, sr_dtfl,
-                sr_hrfl, sr_hrdtfl, performance_points
+                sr_hrfl, sr_hrdtfl, performance_points, hr_mult, dt_mult, fl_mult
             ) VALUES (?, ?, ?, ?, ?,
                     ?, ?, ?, ?, ?,
-                    ?, ?, ?)
+                    ?, ?, ?, ?, ?, ?)
             """,
             (
                 map_id, rank, map._beatmapset.title, map.version, round(map.difficulty_rating, 2),
-                round(sr_hr, 2), round(sr_dt, 2), round(sr_fl, 2), round(sr_hrdt, 2), round(sr_dtfl), round(sr_hrfl, 2), 
-                round(sr_hrdtfl, 2), round(800 * math.pow((2*rank), -0.3) + 200, 2)
+                sr_hr, sr_dt, sr_fl, sr_hrdt, sr_dtfl, sr_hrfl, 
+                sr_hrdtfl, round(800 * math.pow((2*rank), -0.3) + 200, 2), hr_mult, dt_mult, fl_mult
             )
         )
         conn.commit()
+        
+if args.mapid and args.rank:
+    submit_map(args.mapid, args.rank)
