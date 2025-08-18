@@ -281,7 +281,7 @@ def insert_score(score: Score, pp: int = None):
             final_pp = pp
             star_rating = calc_sr(map_info, mod_list_cleaned)
         else:
-            final_pp = calc_pp(map_info, mod_list_cleaned)
+            final_pp = calc_pp(map_info, mod_list_cleaned, score.accuracy)
             star_rating = calc_sr(map_info, mod_list_cleaned)
         
         if prev_score:
@@ -438,3 +438,21 @@ def get_all_users():
             return cursor.fetchall()
         except Exception as e:
             print_to_console(f"Getting all users failed due to: {e}")
+            
+def get_score(score_id: int):
+    """
+    Fetches specific score base on a score id
+    
+    Parameters:
+    score_id (int): id for the desired score
+    
+    Returns:
+    tuple: The score's db row
+    """
+    with sqlite3.connect("osu_pass.db") as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT * FROM scores WHERE score_id = ?", (score_id,))
+            return cursor.fetchone()
+        except Exception as e:
+            print_to_console(f"Getting score failed due to: {e}")

@@ -5,7 +5,7 @@ from ossapi import Mod, Score
 from discord.ext import commands
 from discord import app_commands
 from osu_api import osu_api
-from db_commands import search_disc_user, find_map, insert_score, get_all_maps, calc_pp
+from db_commands import search_disc_user, find_map, insert_score, get_all_maps, calc_pp, get_score
 from console import print_to_console
 import time
 
@@ -141,10 +141,12 @@ class Submit(commands.Cog):
                 print_to_console(f"User {interaction.user.id}'s score submit request failed because there was an illegal mod")
                 return
             if score.pp:
-                print("score has pp")
                 score_submitted = await asyncio.to_thread(insert_score, score)
                 if score_submitted:
-                    embed = discord.Embed(title="Success", description="Score successfully submitted!", color=discord.Color.green())
+                    score_data = get_score(score.id)
+                    embed = discord.Embed(title="Score Submitted", description=f"Successfully submitted **{score.beatmapset.title} [{score.beatmap.version}]** +{score_data[4]}", color=discord.Color.green())
+                    embed.add_field(name="", value=f"pp: {score_data[3]} - SR: {score_data[5]} - Accuracy: {score_data[6]}")
+                    embed.set_image(url=score.beatmapset.covers.cover_2x)
                     await interaction.response.send_message(embed=embed)
                     print_to_console(f"User {interaction.user.id}'s score submit request was successful")
                     return
@@ -165,6 +167,13 @@ class Submit(commands.Cog):
             await interaction.response.send_message(embed=embed)
             print_to_console(f"User {interaction.user.id}'s score submit request failed because the map is not in the database")
             return
+    
+    @submit.error
+    async def submit_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+        embed = discord.Embed(title="SOMETHING SHIT ITSELF", description=f"SOMETHING BROKE pls @ cloudiees :)\n\n{error}", color=discord.Color.red())
+        await interaction.response.send_message(embed=embed)
+        print_to_console(f"User {interaction.user.id}'s score submit request errored because {error}")
+        return
     
     @app_commands.command(name="autosubmit", description="todo")
     async def autosubmit(self, interaction: discord.Interaction):
@@ -202,8 +211,8 @@ class Submit(commands.Cog):
             await interaction.edit_original_response(embed=embed)
             for map in map_list:
                 if map_counter % 20 == 0 and map_counter > 0:
+                    print_to_console(f"User {interaction.user.id}'s auto submit request is sleeping to stop API overload")
                     for i in range(20, 0, -1):
-                        print_to_console(f"User {interaction.user.id}'s auto submit request is sleeping to stop API overload")
                         embed.description = f"Waiting {i} seconds so the osu!api doesn't get mad..."
                         await interaction.edit_original_response(embed=embed)
                         await asyncio.sleep(1)
@@ -249,6 +258,13 @@ class Submit(commands.Cog):
             print_to_console(f"User {interaction.user.id}'s auto submission request failed because their account was not linked")
             return
     
+    @autosubmit.error
+    async def autosubmit_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+        embed = discord.Embed(title="SOMETHING SHIT ITSELF", description=f"SOMETHING BROKE pls @ cloudiees :)\n\n{error}", color=discord.Color.red())
+        await interaction.response.send_message(embed=embed)
+        print_to_console(f"User {interaction.user.id}'s autosubmit request errored because {error}")
+        return
+    
     @app_commands.command(name="submit_recent", description="todo")
     async def submit_recent(self, interaction: discord.Interaction):
         user_db_row = await asyncio.to_thread(search_disc_user, interaction.user.id)
@@ -264,8 +280,12 @@ class Submit(commands.Cog):
                 
                 score_submitted = await asyncio.to_thread(insert_score, recent_score)
                 if score_submitted:
-                    embed = discord.Embed(title="Success", description="Score successfully submitted!", color=discord.Color.green())
+                    score_data = get_score(recent_score.id)
+                    embed = discord.Embed(title="Score Submitted", description=f"Successfully submitted **{recent_score.beatmapset.title} [{recent_score.beatmap.version}]** +{score_data[4]}", color=discord.Color.green())
+                    embed.add_field(name="", value=f"pp: {score_data[3]} - SR: {score_data[5]} - Accuracy: {score_data[6]}")
+                    embed.set_image(url=recent_score.beatmapset.covers.cover_2x)
                     await interaction.response.send_message(embed=embed)
+                    print_to_console(f"User {interaction.user.id}'s score submit request was successful")
                     print_to_console(f"User {interaction.user.id}'s recent score submission request was successful")
                 else:
                     embed = discord.Embed(title="Lower o!ppp Score", description=f"You already have a score on **{recent_score.beatmapset.title} [{recent_score.beatmap.version}]** with a higher or equal o!ppp value!", color=discord.Color.orange())
@@ -283,6 +303,13 @@ class Submit(commands.Cog):
         await interaction.response.send_message(embed=embed)
         print_to_console(f"User {interaction.user.id}'s recent score submission request failed because their account is not linked")
         return
+        
+    @submit_recent.error
+    async def submit_recent_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+        embed = discord.Embed(title="SOMETHING SHIT ITSELF", description=f"SOMETHING BROKE pls @ cloudiees :)\n\n{error}", color=discord.Color.red())
+        await interaction.response.send_message(embed=embed)
+        print_to_console(f"User {interaction.user.id}'s submit recent request errored because {error}")
+        return    
         
 async def setup(bot):
     await bot.add_cog(Submit(bot))

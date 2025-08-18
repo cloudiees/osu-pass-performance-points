@@ -62,7 +62,14 @@ class Tops(commands.Cog):
             view = PageView(user_id=interaction.user.id, pages=pages)
             await interaction.response.send_message(embed=pages[0], view=view)
         print_to_console(f"User {interaction.user.id}'s request was successful")
-        
+    
+    @leaderboard.error
+    async def leaderboard_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+        embed = discord.Embed(title="SOMETHING SHIT ITSELF", description=f"SOMETHING BROKE pls @ cloudiees :)\n\n{error}", color=discord.Color.red())
+        await interaction.response.send_message(embed=embed)
+        print_to_console(f"User {interaction.user.id}'s leaderboard request errored because {error}")
+        return
+    
     @app_commands.command(name="top", description="Get top plays")
     @app_commands.describe(user="osu! username", sort_by_stars="Sort by stars instead of o!ppp", sort_reverse="Sort in reverse order")
     async def top(self, interaction: discord.Interaction, user: str = None, sort_by_stars: bool = False, sort_reverse: bool = False):
@@ -115,6 +122,13 @@ class Tops(commands.Cog):
             view = PageView(user_id=interaction.user.id, pages=pages)
             await interaction.response.send_message(embed=pages[0], view=view)
         print_to_console(f"User {interaction.user.id}'s tops request was successful")
+        
+    @top.error
+    async def top_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+        embed = discord.Embed(title="SOMETHING SHIT ITSELF", description=f"SOMETHING BROKE pls @ cloudiees :)\n\n{error}", color=discord.Color.red())
+        await interaction.response.send_message(embed=embed)
+        print_to_console(f"User {interaction.user.id}'s top request errored because {error}")
+        return
         
 async def setup(bot):
     await bot.add_cog(Tops(bot))

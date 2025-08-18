@@ -32,6 +32,7 @@ class Link(commands.Cog):
             await interaction.response.send_message(embed=embed)
             print_to_console(f"User {interaction.user.id}'s link request failed due to API exception")
             return
+        
         if osu_user and await asyncio.to_thread(search_osu_user, osu_user.id):
             embed = discord.Embed(title="Already Linked", description="This osu! profile is already linked to a discord account.", color=discord.Color.orange())
             await interaction.response.send_message(embed=embed)
@@ -44,7 +45,16 @@ class Link(commands.Cog):
         embed.set_image(url=osu_user.avatar_url)
         await interaction.response.send_message(embed=embed)
         print_to_console(f"User {interaction.user.id}'s link request was successful")
+        return
            
+    
+    @link.error
+    async def link_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+        embed = discord.Embed(title="SOMETHING SHIT ITSELF", description=f"SOMETHING BROKE pls @ cloudiees :)\n\n{error}", color=discord.Color.red())
+        await interaction.response.send_message(embed=embed)
+        print_to_console(f"User {interaction.user.id}'s link request errored because {error}")
+        return    
+    
     @app_commands.command(name="unlink", description="todo")
     async def unlink(self, interaction: discord.Interaction):
         print_to_console(f"User {interaction.user.id} is trying to unlink their account")
@@ -53,10 +63,19 @@ class Link(commands.Cog):
             embed = discord.Embed(title="Successful Unlink", description=f"Successfully unlinked your discord account.", color=discord.Color.green())
             await interaction.response.send_message(embed=embed)         
             print_to_console(f"User {interaction.user.id}'s unlink was successful")
+            return
             
         embed = discord.Embed(title="No Account to Unlink", description=f"This discord account is not linked to an osu! profile.", color=discord.Color.red())
         await interaction.response.send_message(embed=embed)                
         print_to_console(f"User {interaction.user.id}'s unlink request failed")
+        return
+        
+    @unlink.error
+    async def unlink_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+        embed = discord.Embed(title="SOMETHING SHIT ITSELF", description=f"SOMETHING BROKE pls @ cloudiees :)\n\n{error}", color=discord.Color.red())
+        await interaction.response.send_message(embed=embed)
+        print_to_console(f"User {interaction.user.id}'s unlink request errored because {error}")
+        return    
         
 async def setup(bot):
     await bot.add_cog(Link(bot))

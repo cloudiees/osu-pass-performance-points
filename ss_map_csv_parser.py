@@ -13,4 +13,4 @@ with open("ss_maps.csv", newline='') as csvfile:
         rank = int(row[0])
         map_id = int(row[1].split("/")[-1])
         submit_map(map_id, rank)
-        asyncio.sleep(.5)
+        asyncio.run(asyncio.sleep(.5))
