@@ -281,7 +281,7 @@ def insert_score(score: Score, pp: int = None):
             final_pp = pp
             star_rating = calc_sr(map_info, mod_list_cleaned)
         else:
-            final_pp = calc_pp(map_info, mod_list_cleaned, score.accuracy)
+            final_pp = calc_pp(map_info, mod_list_cleaned, score.accuracy * 100)
             star_rating = calc_sr(map_info, mod_list_cleaned)
         
         if prev_score:
@@ -291,7 +291,7 @@ def insert_score(score: Score, pp: int = None):
             delete_score(prev_score)
         
         try:
-            acc = round(float(score.accuracy), 2)
+            acc = round(float(score.accuracy * 100), 2)
             cursor.execute("INSERT INTO scores (score_id, user_osu_id, map_id, performance_points, mods, star_rating, accuracy) VALUES (?, ?, ?, ?, ?, ?, ?)", (score_id, user_id, map_id, round(final_pp, 2), mod_str, round(star_rating,2), acc))  
             cursor.execute("UPDATE users SET total_performance_points = total_performance_points + ? WHERE osu_id = ?", (round(final_pp, 2), user_id))
             conn.commit()
@@ -403,7 +403,7 @@ def get_all_maps():
         except Exception as e:
             print_to_console(f"Getting all maps failed due to: {e}")
    
-def get_all_scores(map_id: int):
+def get_all_scores(map_id: int, sort_by_pp: bool = None, reverse_order: bool = False):
     """
     Fetches all scores on a specified map
     
@@ -416,7 +416,19 @@ def get_all_scores(map_id: int):
     with sqlite3.connect("osu_pass.db") as conn:
         cursor = conn.cursor();
         try:
-            cursor.execute("SELECT * FROM scores WHERE map_id = ?", map_id)
+            request = "SELECT * FROM scores WHERE map_id = ?"
+            if sort_by_pp is not None:
+                request += " ORDER BY "
+                if sort_by_pp:
+                    request += "performance_points "
+                else:
+                    request += "accuracy "
+                if reverse_order:
+                    request += "ASC"
+                else:
+                    request += "DESC"
+
+            cursor.execute(request, (map_id,))
             return cursor.fetchall()
         except Exception as e:
             print_to_console(f"Fetching all scores failed due to: {e}")
@@ -437,7 +449,7 @@ def get_all_users():
             cursor.execute("SELECT osu_id FROM users")
             return cursor.fetchall()
         except Exception as e:
-            print_to_console(f"Getting all users failed due to: {e}")
+            print_to_console(f"Getting all users failed due to: {e}")         
             
 def get_score(score_id: int):
     """

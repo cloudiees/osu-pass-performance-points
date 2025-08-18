@@ -4,8 +4,9 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from osu_api import osu_api
-from db_commands import get_leaderboard, get_top, search_disc_user, search_osu_user
+from db_commands import get_leaderboard, get_top, search_disc_user, search_osu_user, get_all_scores, find_map
 from console import print_to_console
+from ossapi import Beatmap, BeatmapCompact, Beatmapset
 
 class PageView(discord.ui.View):
     def __init__(self, *, user_id: int, pages: list[discord.Embed]):
@@ -39,9 +40,74 @@ class Tops(commands.Cog):
         super().__init__()
         self.bot = bot;
     
-    @app_commands.command(name="leaderboard", description="Displays leaderboard")
+    @app_commands.command(name="map_leaderboard", description="Displays map leaderboard")
+    async def map_leaderboard(self, interaction: discord.Interaction, map_url: str = None, map_id: str = None, sort_by_acc: bool = False, reversed_order: bool = False):
+        if not (map_url or map_id):
+            print_to_console(f"User {interaction.user.id} is leaderboard request failed because they added neither a url or id")
+            embed = discord.Embed(title="Not Enough Arguments", description="Please enter a map id or map link", color=discord.Color.red())
+            await interaction.response.send_message(embed=embed)
+            return
+        
+        if map_url and map_id:
+            print_to_console(f"User {interaction.user.id} is leaderboard request failed because they added both a url and id")
+            embed = discord.Embed(title="Too Many Arguments", description="Please either use the map id or map link, not both", color=discord.Color.red())
+            await interaction.response.send_message(embed=embed)
+            return
+        
+        map_id2 = None
+        if map_url:
+            map_id2 = map_url.split("/")[-1]
+        else:
+            map_id2 = map_id
+        
+        try:
+            map_data = await osu_api.beatmap(beatmap_id=map_id2)
+        except Exception as e:
+            print_to_console(f"User {interaction.user.id} exception caught during map leaderboard request: {e}")
+            embed = discord.Embed(title="Error", description=f"An error occured, make sure the map id or map link are correct!", color=discord.Color.red())
+            await interaction.response.send_message(embed=embed)
+            return
+            
+        if find_map(map_data.id):
+            leaderboard_data = get_all_scores(map_data.id, sort_by_pp=(not sort_by_acc), reverse_order=reversed_order)
+            pages: list[discord.Embed] = []
+            for i in range(0, len(leaderboard_data), 10):
+                chunk = leaderboard_data[i:i+10]
+                lines = [f"{i + j + 1}. {search_osu_user(entry[1])[4]} - {entry[3]}pp - +{entry[4]} - {entry[6]}%" for j, entry in enumerate(chunk)]
+                embed = discord.Embed(
+                    title=f"lb {map_data.beatmapset().title} {map_data.version}",
+                    description="\n".join(lines),
+                    color=discord.Color.blue()
+                )
+                embed.set_footer(text=f"Page {(i // 10) + 1} of {(len(leaderboard_data) - 1) // 10 + 1}")
+                pages.append(embed)
+                
+            if len(pages) == 0:
+                embed = discord.Embed(title="No Scores", description="There are no scores to display", color=discord.Color.orange())
+                await interaction.response.send_message(embed=embed)
+            else:
+                view = PageView(user_id=interaction.user.id, pages=pages)
+                await interaction.response.send_message(embed=pages[0], view=view)
+            
+            print_to_console(f"User {interaction.user.id}'s map leaderboard request was successful")
+            return
+        else:
+            embed = discord.Embed(title="Not a Valid Map", description=f"**{map_data.beatmapset.title} [{map_data.version}]** is not a valid map", color=discord.Color.orange())
+            await interaction.response.send_message(embed=embed)
+            print_to_console(f"User {interaction.user.id}'s tops request failed because their account is not linked")
+            return
+    
+    @map_leaderboard.error
+    async def map_leaderboard_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+        embed = discord.Embed(title="SOMETHING SHIT ITSELF", description=f"SOMETHING BROKE pls @ cloudiees :)\n\n{error}", color=discord.Color.red())
+        await interaction.response.send_message(embed=embed)
+        print_to_console(f"User {interaction.user.id}'s map leaderboard request errored because {error}")
+        return
+        
+    
+    @app_commands.command(name="leaderboard", description="Displays global leaderboard")
     async def leaderboard(self, interaction: discord.Interaction):
-        print_to_console(f"User {interaction.user.id} is attempting to access the leaderboard")
+        print_to_console(f"User {interaction.user.id} is attempting to access global leaderboard")
         leaderboard_data = await asyncio.to_thread(get_leaderboard)
         pages: list[discord.Embed] = []
 
@@ -62,6 +128,7 @@ class Tops(commands.Cog):
             view = PageView(user_id=interaction.user.id, pages=pages)
             await interaction.response.send_message(embed=pages[0], view=view)
         print_to_console(f"User {interaction.user.id}'s request was successful")
+        return
     
     @leaderboard.error
     async def leaderboard_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
