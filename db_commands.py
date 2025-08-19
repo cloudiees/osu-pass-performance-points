@@ -7,7 +7,7 @@ import math
 
 CLEANED_MODS = {"EZ","HR","DT","HT","NC","FL"}
 
-MOD_COMBO_TO_INDEX = {
+MOD_COMBO_TO_INDEX_SR = {
     "NM": 9,
     "HR": 10,
     "DT": 11,
@@ -27,6 +27,16 @@ MOD_COMBO_TO_INDEX = {
     "HTHRFL": 25,
     "EZHTFL": 26
 }
+
+MOD_TO_INDEX_MULT = {
+    "HR":2,
+    "DT":3,
+    "NC":3,
+    "EZ":4,
+    "HT":5,
+    "FL":6
+}
+
 
 COLUMN_INDEX_MAP = {
     "map_id": 0,
@@ -176,21 +186,24 @@ def calc_pp(map_info: tuple, mod_list: list[str], acc: float):
     Returns:
     float: Calculated o!ppp
     """
-    best_acc = map_info[COLUMN_INDEX_MAP["top_acc"]]
-    if not best_acc:
-        best_acc = 0
     map_rank = map_info[COLUMN_INDEX_MAP["map_rank"]]
-    if acc > best_acc:
+    best_acc = map_info[COLUMN_INDEX_MAP["top_acc"]]
+    print_to_console(f"Calculating map rank #{map_rank}, with best acc of {best_acc}, and score acc off {acc}")
+    if not best_acc:
+        best_acc = acc
+    elif acc > best_acc:
         best_acc = acc
         initial_pp = map_info[COLUMN_INDEX_MAP["pp"]]
     else:
         initial_pp = 800 * math.pow((((best_acc/acc)*2)*map_rank), -0.3) + 200
-    
+    print_to_console(f"Initial pp: {initial_pp}")
     final_pp = initial_pp
     for mod in mod_list:
-        final_pp += initial_pp * (map_info[MOD_COMBO_TO_INDEX[mod]] - 1)
-        
-    return float(round(final_pp, 2))
+        if mod in MOD_TO_INDEX_MULT:
+            final_pp += initial_pp * (map_info[MOD_TO_INDEX_MULT[mod]] - 1)
+    
+    print_to_console(f"Final pp: {final_pp}")
+    return float(final_pp)
         
 def calc_sr(map_info: tuple, mod_list: list[str]):
     """
@@ -203,7 +216,7 @@ def calc_sr(map_info: tuple, mod_list: list[str]):
     Returns:
     float: Calculated star rating
     """
-    return float(map_info[MOD_COMBO_TO_INDEX[str(Mod(mod_list))]])
+    return float(map_info[MOD_COMBO_TO_INDEX_SR[str(Mod(mod_list))]])
 
 def update_map_pp(map_info: tuple):
     """
@@ -215,18 +228,21 @@ def update_map_pp(map_info: tuple):
     Returns: 
     None
     """
+    print_to_console(f"Updating map {map_info[COLUMN_INDEX_MAP["map_id"]]}'s PP values")
     scores_list = get_all_scores(map_info[COLUMN_INDEX_MAP["map_id"]])
     for score in scores_list:
         mod_str = score[COLUMN_INDEX_SCORE["mods"]]
         mod_list = []
         for i in range(0, len(mod_str), 2):
             mod_temp = mod_str[i:i+2]
-            if mod_temp == "NC":
-                mod_list.append("DT")
-            elif mod_temp in CLEANED_MODS:
+            if mod_temp in CLEANED_MODS:
                 mod_list.append(mod_temp)
-                
+        
+        if "NM" in mod_list:
+            mod_list = []
+        
         new_pp = calc_pp(map_info, mod_list, score[COLUMN_INDEX_SCORE["acc"]])
+        print_to_console(f"Mod list for score: {mod_list}, previous pp value: {score[COLUMN_INDEX_SCORE["pp"]]}, new pp value: {new_pp}")
         try:
             with sqlite3.connect("osu_pass.db") as conn:
                 cursor = conn.cursor()
@@ -271,6 +287,7 @@ def insert_score(score: Score, pp: int = None):
         if "CL" in mod_list:
             mod_list.remove("CL")
         
+        
         if mod_list:
             mod_str = str(Mod(''.join(mod_list)))
         else:
@@ -291,9 +308,9 @@ def insert_score(score: Score, pp: int = None):
             delete_score(prev_score)
         
         try:
-            acc = round(float(score.accuracy * 100), 2)
-            cursor.execute("INSERT INTO scores (score_id, user_osu_id, map_id, performance_points, mods, star_rating, accuracy) VALUES (?, ?, ?, ?, ?, ?, ?)", (score_id, user_id, map_id, round(final_pp, 2), mod_str, round(star_rating,2), acc))  
-            cursor.execute("UPDATE users SET total_performance_points = total_performance_points + ? WHERE osu_id = ?", (round(final_pp, 2), user_id))
+            acc = float(score.accuracy * 100)
+            cursor.execute("INSERT INTO scores (score_id, user_osu_id, map_id, performance_points, mods, star_rating, accuracy) VALUES (?, ?, ?, ?, ?, ?, ?)", (score_id, user_id, map_id, final_pp, mod_str, star_rating, acc))  
+            cursor.execute("UPDATE users SET total_performance_points = total_performance_points + ? WHERE osu_id = ?", (final_pp, user_id))
             conn.commit()
             if not map_info[COLUMN_INDEX_MAP["top_acc"]]:
                 cursor.execute("UPDATE maps SET top_acc = ? WHERE map_id = ?", (acc, map_id))
@@ -305,7 +322,7 @@ def insert_score(score: Score, pp: int = None):
             
                 
         except Exception as e:
-            print(f"sid: {score_id}, uid: {user_id}, mid: {map_id}, fpp: {final_pp}, mstr: {mod_str}, sr: {star_rating}, acc: {acc}")
+            print_to_console(f"sid: {score_id}, uid: {user_id}, mid: {map_id}, fpp: {final_pp}, mstr: {mod_str}, sr: {star_rating}, acc: {acc}")
             print_to_console(f"Score inseration failed due to: {e}")
             
         return True
@@ -361,7 +378,7 @@ def get_top(user_id: int, stars: bool, reverse: bool):
     list[tuple]: List of specified user's top plays
     """
     query = """
-        SELECT maps.map_name, maps.diff_name, scores.star_rating, scores.mods, scores.performance_points
+        SELECT maps.map_name, maps.diff_name, scores.star_rating, scores.mods, scores.performance_points, scores.accuracy
         FROM scores
         JOIN maps ON scores.map_id = maps.map_id
         WHERE scores.user_osu_id = ?

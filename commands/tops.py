@@ -22,16 +22,16 @@ class PageView(discord.ui.View):
         return True
     
     @discord.ui.button(label="◀️", style=discord.ButtonStyle.secondary)
-    async def prev(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def prev_pg(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.current = self.current - 1
         if self.current < 0:
             self.current = 0
-        await interaction.edit_original_response(embed=self.pages[self.current], view=self)
+        await interaction.response.edit_message(embed=self.pages[self.current], view=self)
         
     @discord.ui.button(label="▶️", style=discord.ButtonStyle.secondary)
-    async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def next_pg(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.current = self.current + 1
-        if self.current > len(self.pages):
+        if self.current >= len(self.pages):
             self.current = len(self.pages) - 1
         await interaction.response.edit_message(embed=self.pages[self.current], view=self)
 
@@ -73,9 +73,9 @@ class Tops(commands.Cog):
             pages: list[discord.Embed] = []
             for i in range(0, len(leaderboard_data), 10):
                 chunk = leaderboard_data[i:i+10]
-                lines = [f"{i + j + 1}. {search_osu_user(entry[1])[4]} - {entry[3]}pp - +{entry[4]} - {entry[6]}%" for j, entry in enumerate(chunk)]
+                lines = [f"{i + j + 1}. {search_osu_user(entry[1])[4]} - {round(entry[3], 2)}ppp - +{entry[4]} - {round(entry[6], 2)}%" for j, entry in enumerate(chunk)]
                 embed = discord.Embed(
-                    title=f"lb {map_data.beatmapset().title} {map_data.version}",
+                    title=f"Leaderboard for {map_data.beatmapset().title} [{map_data.version}]",
                     description="\n".join(lines),
                     color=discord.Color.blue()
                 )
@@ -113,7 +113,7 @@ class Tops(commands.Cog):
 
         for i in range(0, len(leaderboard_data), 10):
             chunk = leaderboard_data[i:i+10]
-            lines = [f"{i + j + 1}. {entry[0]} - {entry[1]}" for j, entry in enumerate(chunk)]
+            lines = [f"{i + j + 1}. **{entry[0]}** - {round(entry[1],2)}ppp" for j, entry in enumerate(chunk)]
             embed = discord.Embed(
                 title="Leaderboard",
                 description="\n".join(lines),
@@ -138,10 +138,11 @@ class Tops(commands.Cog):
         return
     
     @app_commands.command(name="top", description="Get top plays")
-    @app_commands.describe(user="osu! username", sort_by_stars="Sort by stars instead of o!ppp", sort_reverse="Sort in reverse order")
+    @app_commands.describe(user="osu! username", sort_by_stars="Sort by stars instead of ppp", sort_reverse="Sort in reverse order")
     async def top(self, interaction: discord.Interaction, user: str = None, sort_by_stars: bool = False, sort_reverse: bool = False):
         print_to_console(f"User {interaction.user.id} is attempting to access their top plays")
         user_osu_id = None
+        osu_user_name = None
         if user is None:
             user_data = (await asyncio.to_thread(search_disc_user, interaction.user.id))
             if user_data is None:
@@ -149,7 +150,7 @@ class Tops(commands.Cog):
                 await interaction.response.send_message(embed=embed)
                 print_to_console(f"User {interaction.user.id}'s tops request failed because their account is not linked")
                 return
-            
+            osu_user_name = user_data[4]
             user_osu_id = user_data[1]
             
         else:
@@ -163,6 +164,7 @@ class Tops(commands.Cog):
             
             user_data = (await asyncio.to_thread(search_osu_user, osu_user_data.id))
             if user_data:
+                osu_user_name = user_data[4]
                 user_osu_id = user_data[1]
             else:
                 embed = discord.Embed(title="User Not Linked", description="This user has not linked their account.", color=discord.Color.orange())
@@ -174,9 +176,9 @@ class Tops(commands.Cog):
 
         for i in range(0, len(top_data), 10):
             chunk = top_data[i:i+10]
-            lines = [f"{i + j + 1}. {entry[0]} [{entry[1]}] +{entry[3]} {entry[2]} Stars - {entry[4]}o!ppp" for j, entry in enumerate(chunk)]
+            lines = [f"{i + j + 1}. **{entry[0]} [{entry[1]}]** +{entry[3]} {entry[2]} Stars - {round(entry[4], 2)}ppp - {round(entry[5], 2)}%" for j, entry in enumerate(chunk)]
             embed = discord.Embed(
-                title="Top",
+                title=f"{osu_user_name}'s Top Plays",
                 description="\n".join(lines),
                 color=discord.Color.blue()
             )

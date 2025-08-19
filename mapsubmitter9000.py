@@ -57,7 +57,7 @@ def calc_mults(map: ossapi.Beatmap):
     _, ar_hr, od_hr, cs_hr, hp_hr = pyttanko.mods_apply(mods=pyttanko.mods_from_str("HR"), ar=ar, od=od, cs=cs, hp=hp)
     hr_mult = 1 + (od_hr - od) * .05 + (cs_hr - cs) * .1 + (hp_hr - hp) * .05
     _, ar_dt, od_dt, cs_dt, hp_dt = pyttanko.mods_apply(mods=pyttanko.mods_from_str("DT"), ar=ar, od=od, cs=cs, hp=hp)
-    dt_mult = 1.5 + (od_dt - od) * .15 + (cs_dt - cs) * .25 + (hp_dt - hp) * .15
+    dt_mult = 1.5 + (od_dt - od) * .15 + (hp_dt - hp) * .15
     fl_mult = round(1.4 + ((map.total_length / 60) * .1), 2)
     return (round(hr_mult,2), round(dt_mult,2), round(fl_mult,2))
 

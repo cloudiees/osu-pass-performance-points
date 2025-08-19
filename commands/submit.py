@@ -145,13 +145,13 @@ class Submit(commands.Cog):
                 if score_submitted:
                     score_data = get_score(score.id)
                     embed = discord.Embed(title="Score Submitted", description=f"Successfully submitted **{score.beatmapset.title} [{score.beatmap.version}]** +{score_data[4]}", color=discord.Color.green())
-                    embed.add_field(name="", value=f"pp: {score_data[3]} - SR: {score_data[5]} - Accuracy: {score_data[6]}")
+                    embed.add_field(name="", value=f"pp: {round(score_data[3],2)} - SR: {score_data[5]} - Accuracy: {round(score_data[6], 2)}")
                     embed.set_image(url=score.beatmapset.covers.cover_2x)
                     await interaction.response.send_message(embed=embed)
                     print_to_console(f"User {interaction.user.id}'s score submit request was successful")
                     return
                 else:
-                    embed = discord.Embed(title="Lower o!ppp Score", description=f"You already have a score on **{score.beatmapset.title} [{score.beatmap.version}]** with a higher or equal o!ppp value!", color=discord.Color.orange())
+                    embed = discord.Embed(title="Lower ppp Score", description=f"You already have a score on **{score.beatmapset.title} [{score.beatmap.version}]** with a higher or equal ppp value!", color=discord.Color.orange())
                     await interaction.response.send_message(embed=embed)
                     print_to_console(f"User {interaction.user.id}'s score submit request failed because a higher pp score is in the database")
                     return
@@ -231,14 +231,14 @@ class Submit(commands.Cog):
                     mod_list = illegal_mod_and_clean_mod_list(score)
                     if mod_list:
                         mod_list.remove("CL")
-                        pp = calc_pp(map, mod_list, score.accuracy)
+                        pp = calc_pp(map, mod_list, score.accuracy * 100)
                         if pp and pp > best_score_pp:
                             best_score = score
                             best_score_pp = pp
                             
                             
                 if best_score:
-                    await asyncio.to_thread(insert_score, best_score, best_score_pp)
+                    await asyncio.to_thread(insert_score, best_score)
                     message_log += f"Submitted score for map id {map[0]}\n"
                     embed.description = f"Submitted score for map id {map[0]}..."
                     await interaction.edit_original_response(embed=embed)
@@ -246,7 +246,6 @@ class Submit(commands.Cog):
                 await asyncio.sleep(1)
             
             message_log += "Auto submission compelete!"
-            # print(message_log)
             embed.description = "Auto submission complete!"
             embed.color = discord.Color.green()
             print_to_console(f"User {interaction.user.id}'s auto submission request was completed")
@@ -282,13 +281,13 @@ class Submit(commands.Cog):
                 if score_submitted:
                     score_data = get_score(recent_score.id)
                     embed = discord.Embed(title="Score Submitted", description=f"Successfully submitted **{recent_score.beatmapset.title} [{recent_score.beatmap.version}]** +{score_data[4]}", color=discord.Color.green())
-                    embed.add_field(name="", value=f"pp: {score_data[3]} - SR: {score_data[5]} - Accuracy: {score_data[6]}")
+                    embed.add_field(name="", value=f"pp: {round(score_data[3],2)} - SR: {score_data[5]} - Accuracy: {round(score_data[6],2)}")
                     embed.set_image(url=recent_score.beatmapset.covers.cover_2x)
                     await interaction.response.send_message(embed=embed)
                     print_to_console(f"User {interaction.user.id}'s score submit request was successful")
                     print_to_console(f"User {interaction.user.id}'s recent score submission request was successful")
                 else:
-                    embed = discord.Embed(title="Lower o!ppp Score", description=f"You already have a score on **{recent_score.beatmapset.title} [{recent_score.beatmap.version}]** with a higher or equal o!ppp value!", color=discord.Color.orange())
+                    embed = discord.Embed(title="Lower ppp Score", description=f"You already have a score on **{recent_score.beatmapset.title} [{recent_score.beatmap.version}]** with a higher or equal ppp value!", color=discord.Color.orange())
                     await interaction.response.send_message(embed=embed)
                     print_to_console(f"User {interaction.user.id}'s recent score submission request failed due to lower pp score")
                     
