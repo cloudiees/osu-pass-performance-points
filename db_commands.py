@@ -189,14 +189,17 @@ def calc_pp(map_info: tuple, mod_list: list[str], acc: float):
     map_rank = map_info[COLUMN_INDEX_MAP["map_rank"]]
     best_acc = map_info[COLUMN_INDEX_MAP["top_acc"]]
     print_to_console(f"Calculating map rank #{map_rank}, with best acc of {best_acc}, and score acc off {acc}")
+    initial_pp = None
     if not best_acc:
         best_acc = acc
-    elif acc > best_acc:
+    if acc > best_acc:
         best_acc = acc
         initial_pp = map_info[COLUMN_INDEX_MAP["pp"]]
+    if acc <= 70:
+        initial_pp = (800 * math.pow((((best_acc/acc)*2)*map_rank), -0.3) + 200) * (acc / 75)
     else:
         initial_pp = 800 * math.pow((((best_acc/acc)*2)*map_rank), -0.3) + 200
-    print_to_console(f"Initial pp: {initial_pp}")
+    print_to_console(f"Initial pp: {initial_pp}, modlist {mod_list}")
     final_pp = initial_pp
     for mod in mod_list:
         if mod in MOD_TO_INDEX_MULT:
@@ -263,69 +266,77 @@ def insert_score(score: Score, pp: int = None):
     Returns:
     bool: If score insertion was successful
     """
-    with sqlite3.connect("osu_pass.db") as conn:
-        cursor = conn.cursor()
-        map_id = score.beatmap_id
-        score_id = score.id
-        user_id = score.user_id
-        try:
+    map_id = score.beatmap_id
+    score_id = score.id
+    user_id = score.user_id
+    try:
+        with sqlite3.connect("osu_pass.db") as conn:
+            cursor = conn.cursor()
             cursor.execute("SELECT * FROM scores WHERE user_osu_id = ? AND map_id = ?", (user_id, map_id))
             prev_score = cursor.fetchone()
-        except Exception as e:
-            print_to_console(f"Fetching previous score failed due to: {e}")
-        mod_list = []
-        mod_list_cleaned = []
-        # Getting all mods, string is for db and list is for calcs
-        for mod in score.mods:
-            mod_name = mod.acronym
-            mod_list.append(mod_name)
-            if mod_name == "NC":
-                mod_list_cleaned.append("DT")
-            elif mod_name in CLEANED_MODS:
-                mod_list_cleaned.append(mod_name)
-        # ossapi breaks with CL so removing it    
-        if "CL" in mod_list:
-            mod_list.remove("CL")
-        
-        
-        if mod_list:
-            mod_str = str(Mod(''.join(mod_list)))
-        else:
-            mod_str = "NM"
-        
-        map_info = find_map(map_id)
-        if pp:
-            final_pp = pp
-            star_rating = calc_sr(map_info, mod_list_cleaned)
-        else:
-            final_pp = calc_pp(map_info, mod_list_cleaned, score.accuracy * 100)
-            star_rating = calc_sr(map_info, mod_list_cleaned)
-        
-        if prev_score:
-            if prev_score[3] >= final_pp:
-                return False
             
-            delete_score(prev_score)
+    except Exception as e:
+        print_to_console(f"Fetching previous score failed due to: {e}")
+    mod_list = []
+    mod_list_cleaned = []
+    # Getting all mods, string is for db and list is for calcs
+    for mod in score.mods:
+        mod_name = mod.acronym
+        mod_list.append(mod_name)
+        if mod_name == "NC":
+            mod_list_cleaned.append("DT")
+        elif mod_name in CLEANED_MODS:
+            mod_list_cleaned.append(mod_name)
+    # ossapi breaks with CL so removing it    
+    if "CL" in mod_list:
+        mod_list.remove("CL")
+    
+    
+    if mod_list:
+        mod_str = str(Mod(''.join(mod_list)))
+    else:
+        mod_str = "NM"
+    
+    map_info = find_map(map_id)
+    if pp:
+        final_pp = pp
+        star_rating = calc_sr(map_info, mod_list_cleaned)
+    else:
+        final_pp = calc_pp(map_info, mod_list_cleaned, score.accuracy * 100)
+        star_rating = calc_sr(map_info, mod_list_cleaned)
+    
+    if prev_score:
+        print_to_console(f"Comparing {user_id}'s score {score_id} on {map_id} to previous score")
+        if prev_score[3] >= final_pp:
+            print_to_console(f"previous score pp of {prev_score[3]} is greater than {final_pp}")
+            return False
         
-        try:
+        print_to_console(f"previous score pp of {prev_score[3]} is less than {final_pp}")
+        delete_score(prev_score)
+    
+    try:
+        with sqlite3.connect("osu_pass.db") as conn:
+            cursor = conn.cursor()
             acc = float(score.accuracy * 100)
             cursor.execute("INSERT INTO scores (score_id, user_osu_id, map_id, performance_points, mods, star_rating, accuracy) VALUES (?, ?, ?, ?, ?, ?, ?)", (score_id, user_id, map_id, final_pp, mod_str, star_rating, acc))  
             cursor.execute("UPDATE users SET total_performance_points = total_performance_points + ? WHERE osu_id = ?", (final_pp, user_id))
             conn.commit()
+            print_to_console(f"Inserting {user_id}'s score {score_id} on map {map_id} with a ppp of {final_pp}")
             if not map_info[COLUMN_INDEX_MAP["top_acc"]]:
+                print_to_console("Not new best acc")
                 cursor.execute("UPDATE maps SET top_acc = ? WHERE map_id = ?", (acc, map_id))
                 conn.commit()
             elif acc > map_info[COLUMN_INDEX_MAP["top_acc"]]:
+                print_to_console(f"New best acc of {acc}%, vs old best acc of {map_info[COLUMN_INDEX_MAP["top_acc"]]}")
                 cursor.execute("UPDATE maps SET top_acc = ? WHERE map_id = ?", (acc, map_id))
                 conn.commit()
                 update_map_pp(map_info)
             
-                
-        except Exception as e:
-            print_to_console(f"sid: {score_id}, uid: {user_id}, mid: {map_id}, fpp: {final_pp}, mstr: {mod_str}, sr: {star_rating}, acc: {acc}")
-            print_to_console(f"Score inseration failed due to: {e}")
-            
-        return True
+    except Exception as e:
+        print_to_console(f"sid: {score_id}, uid: {user_id}, mid: {map_id}, fpp: {final_pp}, mstr: {mod_str}, sr: {star_rating}, acc: {acc}")
+        print_to_console(f"Score inseration failed due to: {e}")
+        
+    return True
             
 def delete_score(score: tuple):
     """
@@ -360,7 +371,7 @@ def get_leaderboard():
     with sqlite3.connect("osu_pass.db") as conn:
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT discord_name, total_performance_points FROM users ORDER BY total_performance_points DESC")
+            cursor.execute("SELECT osu_name, total_performance_points FROM users ORDER BY total_performance_points DESC")
             return cursor.fetchall()
         except Exception as e:
             print_to_console(f"Fetching leaderboard data failed due to: {e}")

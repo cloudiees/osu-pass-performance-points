@@ -201,18 +201,20 @@ class Submit(commands.Cog):
         
         user_db_row = await asyncio.to_thread(search_disc_user, interaction.user.id)
         if user_db_row:
-            embed = discord.Embed(title="Auto Submit", description="Beginning auto submit...", color=discord.Color.yellow())
+            embed = discord.Embed(title="Auto Submit (0%)", description="Beginning auto submit...", color=discord.Color.yellow())
             user_cooldowns[user_disc_id] = curr_time
             message_log = "Beginning auto submit...\n"
             map_list = get_all_maps()
             await interaction.response.defer(thinking=True)
             map_counter = 0
-            embed = discord.Embed(title="Auto Submit", description="Beginning auto submit...", color=discord.Color.yellow())
+            map_len = len(map_list)
+            embed = discord.Embed(title="Auto Submit (0%)", description="Beginning auto submit...", color=discord.Color.yellow())
             await interaction.edit_original_response(embed=embed)
             for map in map_list:
                 if map_counter % 20 == 0 and map_counter > 0:
                     print_to_console(f"User {interaction.user.id}'s auto submit request is sleeping to stop API overload")
                     for i in range(20, 0, -1):
+                        embed.title = f"Auto Submit ({int((map_counter/map_len)*100)}%)"
                         embed.description = f"Waiting {i} seconds so the osu!api doesn't get mad..."
                         await interaction.edit_original_response(embed=embed)
                         await asyncio.sleep(1)
@@ -220,6 +222,7 @@ class Submit(commands.Cog):
                 map_counter += 1
                 message_log += f"Checking map id {map[0]}...\n"
                 embed.description = f"Checking map id {map[0]}..."
+                embed.title = f"Auto Submit ({int((map_counter/map_len)*100)}%)"
                 await interaction.edit_original_response(embed=embed)
                 best_score:Score = None
                 best_score_pp = -1
@@ -246,6 +249,7 @@ class Submit(commands.Cog):
                 await asyncio.sleep(1)
             
             message_log += "Auto submission compelete!"
+            embed.title = f"Auto Submit (100%)"
             embed.description = "Auto submission complete!"
             embed.color = discord.Color.green()
             print_to_console(f"User {interaction.user.id}'s auto submission request was completed")
