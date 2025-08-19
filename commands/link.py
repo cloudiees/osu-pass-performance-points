@@ -39,7 +39,7 @@ class Link(commands.Cog):
             print_to_console(f"User {interaction.user.id}'s link request failed because osu! account was already linked")
             return
 
-        await asyncio.to_thread(insert_user, interaction.user.id, osu_user.id, interaction.user.name, user)
+        await asyncio.to_thread(insert_user, interaction.user.id, osu_user.id, interaction.user.name, osu_user.username)
 
         embed = discord.Embed(title="Successful Link", description=f"Successfully linked to {osu_user.username}!", color=discord.Color.green())
         embed.set_image(url=osu_user.avatar_url)

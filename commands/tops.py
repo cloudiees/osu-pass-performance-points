@@ -70,15 +70,17 @@ class Tops(commands.Cog):
             
         if find_map(map_data.id):
             leaderboard_data = get_all_scores(map_data.id, sort_by_pp=(not sort_by_acc), reverse_order=reversed_order)
+            map_img = map_data.beatmapset().covers.list
             pages: list[discord.Embed] = []
             for i in range(0, len(leaderboard_data), 10):
                 chunk = leaderboard_data[i:i+10]
-                lines = [f"{i + j + 1}. {search_osu_user(entry[1])[4]} - {round(entry[3], 2)}ppp - +{entry[4]} - {round(entry[6], 2)}%" for j, entry in enumerate(chunk)]
+                lines = [f"{i + j + 1}. **{search_osu_user(entry[1])[4]}**\n\u00A0\u00A0\u00A0\u00A0+{entry[4]} - {round(entry[3], 2)}ppp - {round(entry[6], 2)}%" for j, entry in enumerate(chunk)]
                 embed = discord.Embed(
                     title=f"Leaderboard for {map_data.beatmapset().title} [{map_data.version}]",
                     description="\n".join(lines),
                     color=discord.Color.blue()
                 )
+                embed.set_thumbnail(url=map_img)
                 embed.set_footer(text=f"Page {(i // 10) + 1} of {(len(leaderboard_data) - 1) // 10 + 1}")
                 pages.append(embed)
                 
@@ -143,6 +145,7 @@ class Tops(commands.Cog):
         print_to_console(f"User {interaction.user.id} is attempting to access their top plays")
         user_osu_id = None
         osu_user_name = None
+        osu_user_img = None
         if user is None:
             user_data = (await asyncio.to_thread(search_disc_user, interaction.user.id))
             if user_data is None:
@@ -150,6 +153,8 @@ class Tops(commands.Cog):
                 await interaction.response.send_message(embed=embed)
                 print_to_console(f"User {interaction.user.id}'s tops request failed because their account is not linked")
                 return
+            osu_user_data = await osu_api.user(user_data[1])
+            osu_user_img = osu_user_data.avatar_url
             osu_user_name = user_data[4]
             user_osu_id = user_data[1]
             
@@ -164,8 +169,10 @@ class Tops(commands.Cog):
             
             user_data = (await asyncio.to_thread(search_osu_user, osu_user_data.id))
             if user_data:
+                osu_user_img = osu_user_data.avatar_url
                 osu_user_name = user_data[4]
                 user_osu_id = user_data[1]
+                
             else:
                 embed = discord.Embed(title="User Not Linked", description="This user has not linked their account.", color=discord.Color.orange())
                 await interaction.response.send_message(embed=embed)
@@ -176,12 +183,13 @@ class Tops(commands.Cog):
 
         for i in range(0, len(top_data), 10):
             chunk = top_data[i:i+10]
-            lines = [f"{i + j + 1}. **{entry[0]} [{entry[1]}]** +{entry[3]} {entry[2]} Stars - {round(entry[4], 2)}ppp - {round(entry[5], 2)}%" for j, entry in enumerate(chunk)]
+            lines = [f"{i + j + 1}. **{entry[0]} [{entry[1]}]**\n\u00A0\u00A0\u00A0\u00A0+{entry[3]} {entry[2]}⭐ - {round(entry[4], 2)}ppp - {round(entry[5], 2)}%" for j, entry in enumerate(chunk)]
             embed = discord.Embed(
                 title=f"{osu_user_name}'s Top Plays",
                 description="\n".join(lines),
                 color=discord.Color.blue()
             )
+            embed.set_thumbnail(url=osu_user_img)
             embed.set_footer(text=f"Page {(i // 10) + 1} of {(len(top_data) - 1) // 10 + 1}")
             pages.append(embed)
         if len(pages) == 0:

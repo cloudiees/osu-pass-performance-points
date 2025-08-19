@@ -145,7 +145,7 @@ class Submit(commands.Cog):
                 if score_submitted:
                     score_data = get_score(score.id)
                     embed = discord.Embed(title="Score Submitted", description=f"Successfully submitted **{score.beatmapset.title} [{score.beatmap.version}]** +{score_data[4]}", color=discord.Color.green())
-                    embed.add_field(name="", value=f"pp: {round(score_data[3],2)} - SR: {score_data[5]} - Accuracy: {round(score_data[6], 2)}")
+                    embed.add_field(name="", value=f"{round(score_data[3],2)}ppp - {score_data[5]}⭐ - {round(score_data[6], 2)}%")
                     embed.set_image(url=score.beatmapset.covers.cover_2x)
                     await interaction.response.send_message(embed=embed)
                     print_to_console(f"User {interaction.user.id}'s score submit request was successful")
@@ -281,8 +281,8 @@ class Submit(commands.Cog):
                 if score_submitted:
                     score_data = get_score(recent_score.id)
                     embed = discord.Embed(title="Score Submitted", description=f"Successfully submitted **{recent_score.beatmapset.title} [{recent_score.beatmap.version}]** +{score_data[4]}", color=discord.Color.green())
-                    embed.add_field(name="", value=f"pp: {round(score_data[3],2)} - SR: {score_data[5]} - Accuracy: {round(score_data[6],2)}")
-                    embed.set_image(url=recent_score.beatmapset.covers.cover_2x)
+                    embed.add_field(name="", value=f"{round(score_data[3],2)}ppp - {score_data[5]}⭐ - {round(score_data[6], 2)}%")
+                    embed.set_image(url=recent_score.beatmapset.covers.card_2x)
                     await interaction.response.send_message(embed=embed)
                     print_to_console(f"User {interaction.user.id}'s score submit request was successful")
                     print_to_console(f"User {interaction.user.id}'s recent score submission request was successful")
