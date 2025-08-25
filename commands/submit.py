@@ -140,7 +140,7 @@ class Submit(commands.Cog):
             if await illegal_mod_detection(score, interaction):
                 print_to_console(f"User {interaction.user.id}'s score submit request failed because there was an illegal mod")
                 return
-            if score.pp:
+            if score.started_at is None:
                 score_submitted = await asyncio.to_thread(insert_score, score)
                 if score_submitted:
                     score_data = get_score(score.id)
@@ -157,9 +157,9 @@ class Submit(commands.Cog):
                     return
                 
             else:
-                embed = discord.Embed(title="Unranked Score", description="This score is not ranked.", color=discord.Color.red())
+                embed = discord.Embed(title="Not a Stable Score", description="This score is not set on Stable.", color=discord.Color.red())
                 await interaction.response.send_message(embed=embed)
-                print_to_console(f"User {interaction.user.id}'s score submit request failed because the score is unranked")
+                print_to_console(f"User {interaction.user.id}'s score submit request failed because the score is not on stable")
                 return
                 
         else:
@@ -226,7 +226,7 @@ class Submit(commands.Cog):
                 await interaction.edit_original_response(embed=embed)
                 best_score:Score = None
                 best_score_pp = -1
-                score_list = await osu_api.beatmap_user_scores(map[0], user_db_row[1])
+                score_list = await osu_api.beatmap_user_scores(map[0], user_db_row[1], legacy_only=True)
                 if not score_list:
                     continue
                 

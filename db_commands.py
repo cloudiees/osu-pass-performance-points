@@ -37,6 +37,13 @@ MOD_TO_INDEX_MULT = {
     "FL":6
 }
 
+COLUMN_INDEX_USER = {
+    "discord_id": 0,
+    "osu_id": 1,
+    "total_pp": 2,
+    "discord_name": 3,
+    "osu_name": 4
+}
 
 COLUMN_INDEX_MAP = {
     "map_id": 0,
@@ -165,6 +172,15 @@ def delete_user(discord_id: int):
     Returns:
     None
     """
+    osu_id = search_disc_user(discord_id)[COLUMN_INDEX_USER["osu_id"]]
+    scores = get_all_user_scores(user_id=osu_id)
+    
+    print_to_console(f"Scores: {scores}, osu_id: {osu_id}")
+    
+    for score in scores:
+        print_to_console(f"Deleting score: {score}")
+        delete_score(score)
+    
     with sqlite3.connect("osu_pass.db") as conn:
         conn.execute("PRAGMA foreign_keys = ON")
         cursor = conn.cursor()
@@ -221,18 +237,37 @@ def calc_sr(map_info: tuple, mod_list: list[str]):
     """
     return float(map_info[MOD_COMBO_TO_INDEX_SR[str(Mod(mod_list))]])
 
-def update_map_pp(map_info: tuple):
+def update_map_pp(map_info: tuple, find_best_acc:bool = False):
     """
     Updates all of a specified map's pp values
     
     Parameters:
     map_info (tuple): Map data that is stored in the database
+    find_best_acc (bool): Whether to find the best acc before recalcing, defaulted to false
     
     Returns: 
     None
     """
     print_to_console(f"Updating map {map_info[COLUMN_INDEX_MAP["map_id"]]}'s PP values")
     scores_list = get_all_scores(map_info[COLUMN_INDEX_MAP["map_id"]])
+    if find_best_acc:
+        print_to_console(f"Finding map {map_info[COLUMN_INDEX_MAP["map_id"]]}'s new best acc")
+        best_acc = 0
+        for score in scores_list:
+            acc = score[COLUMN_INDEX_SCORE["acc"]]
+            if best_acc < acc:
+                best_acc = acc
+        with sqlite3.connect("osu_pass.db") as conn:
+            try:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE maps SET top_acc = ? WHERE map_id = ?", (best_acc, map_info[COLUMN_INDEX_MAP["map_id"]]))
+                conn.commit()
+            except Exception as e:
+                print_to_console(f"Failed to set new best acc due to: {e}")
+        temp_map_info = list(map_info)
+        temp_map_info[COLUMN_INDEX_MAP["top_acc"]] = best_acc
+        map_info = tuple(temp_map_info)
+        
     for score in scores_list:
         mod_str = score[COLUMN_INDEX_SCORE["mods"]]
         mod_list = []
@@ -277,6 +312,8 @@ def insert_score(score: Score, pp: int = None):
             
     except Exception as e:
         print_to_console(f"Fetching previous score failed due to: {e}")
+        return
+    
     mod_list = []
     mod_list_cleaned = []
     # Getting all mods, string is for db and list is for calcs
@@ -307,11 +344,11 @@ def insert_score(score: Score, pp: int = None):
     
     if prev_score:
         print_to_console(f"Comparing {user_id}'s score {score_id} on {map_id} to previous score")
-        if prev_score[3] >= final_pp:
-            print_to_console(f"previous score pp of {prev_score[3]} is greater than {final_pp}")
+        if prev_score[COLUMN_INDEX_SCORE["pp"]] >= final_pp:
+            print_to_console(f"previous score pp of {prev_score[COLUMN_INDEX_SCORE["pp"]]} is greater than {final_pp}")
             return False
         
-        print_to_console(f"previous score pp of {prev_score[3]} is less than {final_pp}")
+        print_to_console(f"previous score pp of {prev_score[COLUMN_INDEX_SCORE["pp"]]} is less than {final_pp}")
         delete_score(prev_score)
     
     try:
@@ -335,6 +372,7 @@ def insert_score(score: Score, pp: int = None):
     except Exception as e:
         print_to_console(f"sid: {score_id}, uid: {user_id}, mid: {map_id}, fpp: {final_pp}, mstr: {mod_str}, sr: {star_rating}, acc: {acc}")
         print_to_console(f"Score inseration failed due to: {e}")
+        return False
         
     return True
             
@@ -348,15 +386,25 @@ def delete_score(score: tuple):
     Returns:
     None
     """
+    print_to_console(f"Attempting to delete score: {score}")
+    map_info = get_map_info(score[COLUMN_INDEX_SCORE["map_id"]])
+    print_to_console(f"map_info: {map_info}")
+    best_acc = map_info[COLUMN_INDEX_MAP["top_acc"]]
+    print_to_console(f"best_acc: {best_acc}")
+    acc = score[COLUMN_INDEX_SCORE["acc"]]
+    print_to_console(f"acc: {acc}")
     with sqlite3.connect("osu_pass.db") as conn:
-        print("attempting to delete score")
         cursor = conn.cursor()
         try:
-            cursor.execute("UPDATE users SET total_performance_points = total_performance_points - ? WHERE osu_id = ?", (score[3], score[1]))
-            cursor.execute("DELETE FROM scores WHERE score_id = ?", (score[0],))
+            cursor.execute("UPDATE users SET total_performance_points = total_performance_points - ? WHERE osu_id = ?", (score[COLUMN_INDEX_SCORE["pp"]], score[COLUMN_INDEX_SCORE["osu_id"]]))
+            cursor.execute("DELETE FROM scores WHERE score_id = ?", (score[COLUMN_INDEX_SCORE["score_id"]],))
             conn.commit()
         except Exception as e:
             print_to_console(f"Deleting score failed due to: {e}")
+            return
+    
+    if best_acc == acc:
+        update_map_pp(map_info, find_best_acc=True)
            
 def get_leaderboard():
     """
@@ -375,6 +423,15 @@ def get_leaderboard():
             return cursor.fetchall()
         except Exception as e:
             print_to_console(f"Fetching leaderboard data failed due to: {e}")
+    
+def get_all_user_scores(user_id: int):
+    with sqlite3.connect("osu_pass.db") as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT * FROM scores WHERE user_osu_id = ?", (user_id,))
+            return cursor.fetchall()
+        except Exception as e:
+            print_to_console(f"Fetching tops failed due to: {e}")
     
 def get_top(user_id: int, stars: bool, reverse: bool):
     """
@@ -412,6 +469,15 @@ def get_top(user_id: int, stars: bool, reverse: bool):
             return cursor.fetchall()
         except Exception as e:
             print_to_console(f"Fetching tops failed due to: {e}")
+    
+def get_map_info(map_id: int):
+    with sqlite3.connect("osu_pass.db") as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT * FROM maps WHERE map_id = ?", (map_id,))
+            return cursor.fetchone()
+        except Exception as e:
+            print_to_console(f"Fetching leaderboard data failed due to: {e}")
     
 def get_all_maps():
     """
