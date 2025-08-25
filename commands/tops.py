@@ -77,6 +77,7 @@ class Tops(commands.Cog):
                 lines = [f"{i + j + 1}. **{search_osu_user(entry[1])[4]}**\n\u00A0\u00A0\u00A0\u00A0+{entry[4]} - {round(entry[3], 2)}ppp - {round(entry[6], 2)}%" for j, entry in enumerate(chunk)]
                 embed = discord.Embed(
                     title=f"Leaderboard for {map_data.beatmapset().title} [{map_data.version}]",
+                    url=map_data.url,
                     description="\n".join(lines),
                     color=discord.Color.blue()
                 )

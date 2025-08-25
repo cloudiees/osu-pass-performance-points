@@ -144,7 +144,7 @@ class Submit(commands.Cog):
                 score_submitted = await asyncio.to_thread(insert_score, score)
                 if score_submitted:
                     score_data = get_score(score.id)
-                    embed = discord.Embed(title="Score Submitted", description=f"Successfully submitted **{score.beatmapset.title} [{score.beatmap.version}]** +{score_data[4]}", color=discord.Color.green())
+                    embed = discord.Embed(title="Score Submitted", url=score.beatmap.url, description=f"Successfully submitted **{score.beatmapset.title} [{score.beatmap.version}]** +{score_data[4]}", color=discord.Color.green())
                     embed.add_field(name="", value=f"{round(score_data[3],2)}ppp - {score_data[5]}⭐ - {round(score_data[6], 2)}%")
                     embed.set_image(url=score.beatmapset.covers.cover_2x)
                     await interaction.response.send_message(embed=embed)
@@ -284,7 +284,7 @@ class Submit(commands.Cog):
                 score_submitted = await asyncio.to_thread(insert_score, recent_score)
                 if score_submitted:
                     score_data = get_score(recent_score.id)
-                    embed = discord.Embed(title="Score Submitted", description=f"Successfully submitted **{recent_score.beatmapset.title} [{recent_score.beatmap.version}]** +{score_data[4]}", color=discord.Color.green())
+                    embed = discord.Embed(title="Score Submitted", url=recent_score.beatmap.url, description=f"Successfully submitted **{recent_score.beatmapset.title} [{recent_score.beatmap.version}]** +{score_data[4]}", color=discord.Color.green())
                     embed.add_field(name="", value=f"{round(score_data[3],2)}ppp - {score_data[5]}⭐ - {round(score_data[6], 2)}%")
                     embed.set_image(url=recent_score.beatmapset.covers.card_2x)
                     await interaction.response.send_message(embed=embed)
