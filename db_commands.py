@@ -419,7 +419,7 @@ def get_leaderboard():
     with sqlite3.connect("osu_pass.db") as conn:
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT osu_name, total_performance_points FROM users ORDER BY total_performance_points DESC")
+            cursor.execute("SELECT osu_name, total_performance_points, osu_id FROM users ORDER BY total_performance_points DESC")
             return cursor.fetchall()
         except Exception as e:
             print_to_console(f"Fetching leaderboard data failed due to: {e}")
@@ -446,7 +446,7 @@ def get_top(user_id: int, stars: bool, reverse: bool):
     list[tuple]: List of specified user's top plays
     """
     query = """
-        SELECT maps.map_name, maps.diff_name, scores.star_rating, scores.mods, scores.performance_points, scores.accuracy
+        SELECT maps.map_name, maps.diff_name, scores.star_rating, scores.mods, scores.performance_points, scores.accuracy, maps.map_id
         FROM scores
         JOIN maps ON scores.map_id = maps.map_id
         WHERE scores.user_osu_id = ?
@@ -477,7 +477,7 @@ def get_map_info(map_id: int):
             cursor.execute("SELECT * FROM maps WHERE map_id = ?", (map_id,))
             return cursor.fetchone()
         except Exception as e:
-            print_to_console(f"Fetching leaderboard data failed due to: {e}")
+            print_to_console(f"Fetching map info failed due to: {e}")
     
 def get_all_maps():
     """

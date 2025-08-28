@@ -48,7 +48,7 @@ class Tops(commands.Cog):
             pages: list[discord.Embed] = []
             for i in range(0, len(leaderboard_data), 10):
                 chunk = leaderboard_data[i:i+10]
-                lines = [f"{i + j + 1}. **{search_osu_user(entry[1])[4]}**\n\u00A0\u00A0\u00A0\u00A0+{entry[4]} - {round(entry[3], 2)}ppp - {round(entry[6], 2)}%" for j, entry in enumerate(chunk)]
+                lines = [f"{i + j + 1}. **[{search_osu_user(entry[1])[4]}](https://osu.ppy.sh/u/{entry[1]})**\n\u00A0\u00A0\u00A0\u00A0+{entry[4]} - {round(entry[3], 2)}ppp - {round(entry[6], 2)}%" for j, entry in enumerate(chunk)]
                 embed = discord.Embed(
                     title=f"Leaderboard for {map_data.beatmapset().title} [{map_data.version}]",
                     url=map_data.url,
@@ -90,7 +90,7 @@ class Tops(commands.Cog):
 
         for i in range(0, len(leaderboard_data), 10):
             chunk = leaderboard_data[i:i+10]
-            lines = [f"{i + j + 1}. **{entry[0]}** - {round(entry[1],2)}ppp" for j, entry in enumerate(chunk)]
+            lines = [f"{i + j + 1}. **[{entry[0]}](https://osu.ppy.sh/u/{entry[2]})** - {round(entry[1],2)}ppp" for j, entry in enumerate(chunk)]
             embed = discord.Embed(
                 title="Leaderboard",
                 description="\n".join(lines),
@@ -158,10 +158,11 @@ class Tops(commands.Cog):
 
         for i in range(0, len(top_data), 10):
             chunk = top_data[i:i+10]
-            lines = [f"{i + j + 1}. **{entry[0]} [{entry[1]}]**\n\u00A0\u00A0\u00A0\u00A0+{entry[3]} {entry[2]}⭐ - {round(entry[4], 2)}ppp - {round(entry[5], 2)}%" for j, entry in enumerate(chunk)]
+            lines = [f"{i + j + 1}. **[{entry[0]} [{entry[1]}]](https://osu.ppy.sh/b/{entry[6]})**\n\u00A0\u00A0\u00A0\u00A0+{entry[3]} {entry[2]}⭐ - {round(entry[4], 2)}ppp - {round(entry[5], 2)}%" for j, entry in enumerate(chunk)]
             embed = discord.Embed(
                 title=f"{osu_user_name}'s Top Plays",
                 description="\n".join(lines),
+                url=f"https://osu.ppy.sh/u/{user_osu_id}",
                 color=discord.Color.blue()
             )
             embed.set_thumbnail(url=osu_user_img)
