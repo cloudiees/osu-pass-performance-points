@@ -11,7 +11,7 @@ class Maps(commands.Cog):
         super().__init__()
         self.bot = bot;
     @app_commands.command(name="map_list", description="todo")
-    async def map_list():
+    async def map_list(self, interaction: discord.Interaction):
         return
         
 async def setup(bot):

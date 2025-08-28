@@ -1,3 +1,5 @@
+import discord
+
 class PageView(discord.ui.View):
     def __init__(self, *, user_id: int, pages: list[discord.Embed]):
         super().__init__(timeout=60)
