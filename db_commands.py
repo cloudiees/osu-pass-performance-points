@@ -492,7 +492,7 @@ def get_all_maps():
     with sqlite3.connect("osu_pass.db") as conn:
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT * FROM maps")
+            cursor.execute("SELECT * FROM maps ORDER BY map_rank ASC")
             return cursor.fetchall()
         except Exception as e:
             print_to_console(f"Getting all maps failed due to: {e}")
