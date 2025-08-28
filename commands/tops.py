@@ -83,7 +83,7 @@ class Tops(commands.Cog):
         return
         
     
-    @app_commands.command(name="leaderboard", description="Displays global leaderboard")
+    @app_commands.command(name="leaderboard", description="Displays ppp leaderboard")
     async def leaderboard(self, interaction: discord.Interaction):
         print_to_console(f"User {interaction.user.id} is attempting to access global leaderboard")
         leaderboard_data = await asyncio.to_thread(get_leaderboard)
@@ -115,7 +115,7 @@ class Tops(commands.Cog):
         print_to_console(f"User {interaction.user.id}'s leaderboard request errored because {error}")
         return
     
-    @app_commands.command(name="top", description="Get top plays")
+    @app_commands.command(name="top", description="Displays top plays")
     @app_commands.describe(user="osu! username", sort_by_stars="Sort by stars instead of ppp", sort_reverse="Sort in reverse order")
     async def top(self, interaction: discord.Interaction, user: str = None, sort_by_stars: bool = False, sort_reverse: bool = False):
         print_to_console(f"User {interaction.user.id} is attempting to access their top plays")
