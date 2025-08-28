@@ -111,8 +111,8 @@ class Submit(commands.Cog):
         super().__init__()
         self.bot = bot;
     
-    @app_commands.command(name="submit", description="todo")
-    @app_commands.describe(score_id="score id")
+    @app_commands.command(name="submit", description="Submit a score using it's score id")
+    @app_commands.describe(score_id="id of the score you want to submit")
     async def submit(self, interaction: discord.Interaction, score_id: int):
         print_to_console(f"User {interaction.user.id} is attempting to submit a score")
         try:
@@ -175,7 +175,7 @@ class Submit(commands.Cog):
         print_to_console(f"User {interaction.user.id}'s score submit request errored because {error}")
         return
     
-    @app_commands.command(name="autosubmit", description="todo")
+    @app_commands.command(name="autosubmit", description=f"Automatically scan and submit valid pass scores ({COOLDOWN_SECONDS//3600} hour cooldown)")
     async def autosubmit(self, interaction: discord.Interaction):
         print_to_console(f"User {interaction.user.id} is attempting to auto submit scores")
         user_disc_id = interaction.user.id
@@ -268,7 +268,7 @@ class Submit(commands.Cog):
         print_to_console(f"User {interaction.user.id}'s autosubmit request errored because {error}")
         return
     
-    @app_commands.command(name="submit_recent", description="todo")
+    @app_commands.command(name="submit_recent", description="Submit the most recent passed score")
     async def submit_recent(self, interaction: discord.Interaction):
         user_db_row = await asyncio.to_thread(search_disc_user, interaction.user.id)
         if user_db_row:

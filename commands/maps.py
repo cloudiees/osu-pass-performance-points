@@ -11,7 +11,7 @@ class Maps(commands.Cog):
     def __init__(self, bot):
         super().__init__()
         self.bot = bot;
-    @app_commands.command(name="map_list", description="todo")
+    @app_commands.command(name="map_list", description="Get the playable map list")
     async def map_list(self, interaction: discord.Interaction):
         print_to_console(f"User {interaction.user.id}'s is attempting to access the map list")
         maps = get_all_maps()

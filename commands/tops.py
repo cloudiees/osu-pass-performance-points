@@ -14,8 +14,9 @@ class Tops(commands.Cog):
         super().__init__()
         self.bot = bot;
     
-    @app_commands.command(name="map_leaderboard", description="Displays map leaderboard")
-    async def map_leaderboard(self, interaction: discord.Interaction, map_url: str = None, map_id: str = None, sort_by_acc: bool = False, reversed_order: bool = False):
+    @app_commands.command(name="map_leaderboard", description="Displays a map's leaderboard")
+    @app_commands.describe(map_url="Beatmap URL", map_id="Beatmap id", sort_by_acc="Sort by accuracy instead of ppp", reversed_order="Sort in reversed order")
+    async def map_leaderboard(self, interaction: discord.Interaction, map_url: str = None, map_id: int = None, sort_by_acc: bool = False, reversed_order: bool = False):
         if not (map_url or map_id):
             print_to_console(f"User {interaction.user.id} is leaderboard request failed because they added neither a url or id")
             embed = discord.Embed(title="Not Enough Arguments", description="Please enter a map id or map link", color=discord.Color.red())

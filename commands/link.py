@@ -11,7 +11,7 @@ class Link(commands.Cog):
         super().__init__()
         self.bot = bot;
     
-    @app_commands.command(name="link", description="links osu! profile to your discord")
+    @app_commands.command(name="link", description="Links osu! profile to your discord")
     @app_commands.describe(user="Your osu! username")
     async def link(self, interaction: discord.Interaction, user: str):
         print_to_console(f"Trying to link user {interaction.user.id}")
@@ -55,7 +55,7 @@ class Link(commands.Cog):
         print_to_console(f"User {interaction.user.id}'s link request errored because {error}")
         return    
     
-    @app_commands.command(name="unlink", description="todo")
+    @app_commands.command(name="unlink", description="Unlink your osu! profile from your discord")
     async def unlink(self, interaction: discord.Interaction):
         print_to_console(f"User {interaction.user.id} is trying to unlink their account")
         if await asyncio.to_thread(search_disc_user, interaction.user.id):
