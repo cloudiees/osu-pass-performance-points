@@ -15,8 +15,8 @@ class Tops(commands.Cog):
         self.bot = bot;
     
     @app_commands.command(name="map_leaderboard", description="Displays a map's leaderboard")
-    @app_commands.describe(map_url="Beatmap URL", map_id="Beatmap id", sort_by_acc="Sort by accuracy instead of ppp", reversed_order="Sort in reversed order")
-    async def map_leaderboard(self, interaction: discord.Interaction, map_url: str = None, map_id: int = None, sort_by_acc: bool = False, reversed_order: bool = False):
+    @app_commands.describe(map_url="Beatmap URL", map_id="Beatmap id", sort_by_acc="Sort by accuracy instead of ppp", sort_reverse="Sort in reversed order")
+    async def map_leaderboard(self, interaction: discord.Interaction, map_url: str = None, map_id: int = None, sort_by_acc: bool = False, sort_reverse: bool = False):
         if not (map_url or map_id):
             print_to_console(f"User {interaction.user.id} is leaderboard request failed because they added neither a url or id")
             embed = discord.Embed(title="Not Enough Arguments", description="Please enter a map id or map link", color=discord.Color.red())
@@ -44,7 +44,7 @@ class Tops(commands.Cog):
             return
             
         if find_map(map_data.id):
-            leaderboard_data = get_all_scores(map_data.id, sort_by_pp=(not sort_by_acc), reverse_order=reversed_order)
+            leaderboard_data = get_all_scores(map_data.id, sort_by_pp=(not sort_by_acc), reverse_order=sort_reverse)
             map_img = map_data.beatmapset().covers.list
             pages: list[discord.Embed] = []
             for i in range(0, len(leaderboard_data), 10):
