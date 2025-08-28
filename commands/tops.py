@@ -1,4 +1,3 @@
-# TODO: Fetch all users sorted by greatest o!ppp
 import asyncio
 import discord
 from discord.ext import commands
@@ -17,6 +16,7 @@ class Tops(commands.Cog):
     @app_commands.command(name="map_leaderboard", description="Displays a map's leaderboard")
     @app_commands.describe(map_url="Beatmap URL", map_id="Beatmap id", sort_by_acc="Sort by accuracy instead of ppp", sort_reverse="Sort in reversed order")
     async def map_leaderboard(self, interaction: discord.Interaction, map_url: str = None, map_id: int = None, sort_by_acc: bool = False, sort_reverse: bool = False):
+        # Validating that map_url or map_id is filled, but not both
         if not (map_url or map_id):
             print_to_console(f"User {interaction.user.id} is leaderboard request failed because they added neither a url or id")
             embed = discord.Embed(title="Not Enough Arguments", description="Please enter a map id or map link", color=discord.Color.red())
@@ -28,7 +28,7 @@ class Tops(commands.Cog):
             embed = discord.Embed(title="Too Many Arguments", description="Please either use the map id or map link, not both", color=discord.Color.red())
             await interaction.response.send_message(embed=embed)
             return
-        
+        # I don't know why I made a new variable here, please don't question it
         map_id2 = None
         if map_url:
             map_id2 = map_url.split("/")[-1]

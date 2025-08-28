@@ -4,6 +4,7 @@ from discord import app_commands
 from console import print_to_console
 from page_view import PageView
 
+# Dict of commands and a simple description
 commands_list = {
             "link" : "Links osu! profile to your discord",
             "unlink": "Unlink your osu! profile from your discord",
@@ -15,6 +16,8 @@ commands_list = {
             "leaderboard": "Displays ppp leaderboard",
             "top": "Displays top plays"
         }
+
+# Dict of commands and a more detailed description
 commands_list_detailed = {
             "link" : "Links osu! profile to your discord\n\nThe *user* field is where you enter your osu! username\n\nYou must link your account before you start submitting scores\n\nYou can only link to one account\n\nIf you accidently link to the wrong account you can use **/unlink** to unlink the osu! account from your discord account",
             "unlink": "Unlink your osu! profile from your discord\n\nYou must have your account linked before you can unlink",
@@ -35,6 +38,7 @@ class Help(commands.Cog):
     @app_commands.command(name="help", description="Get command list or help with a specific command")
     @app_commands.describe(command="Command to get more info on")
     async def help(self, interaction: discord.Interaction, command:str = None):
+        # Specific command chosen
         if command:
             if len(command) > 1:
                 if command[0] == '/':
@@ -55,6 +59,7 @@ class Help(commands.Cog):
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
         else:
+            # Listing all commands
             pages: list[discord.Embed] = []
             keys = list(commands_list.keys())
             for i in range(0, len(keys), 5):

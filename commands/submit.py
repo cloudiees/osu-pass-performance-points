@@ -1,4 +1,3 @@
-# TODO: Submit a score
 import asyncio
 import discord
 from ossapi import Mod, Score
@@ -115,6 +114,15 @@ class Submit(commands.Cog):
     @app_commands.describe(score_id="id of the score you want to submit")
     async def submit(self, interaction: discord.Interaction, score_id: int):
         print_to_console(f"User {interaction.user.id} is attempting to submit a score")
+            
+        user_db_row = await asyncio.to_thread(search_disc_user, interaction.user.id)
+        # Checking if the user is in the DB
+        if not user_db_row:
+            embed = discord.Embed(title="Not Yet Linked", description="Please link your account before submitting a score by using `/link <osu_username>`.", color=discord.Color.orange())
+            await interaction.response.send_message(embed=embed)
+            print_to_console(f"User {interaction.user.id}'s score submit request failed because their account was not yet linked")
+            return
+        
         try:
             score = await osu_api.score(score_id)
         except Exception as e:
@@ -122,26 +130,23 @@ class Submit(commands.Cog):
             await interaction.response.send_message(embed=embed)
             print_to_console(f"User {interaction.user.id}'s score submit request failed due to: {e}")
             return
-            
-        user_db_row = await asyncio.to_thread(search_disc_user, interaction.user.id)
-        if not user_db_row:
-            embed = discord.Embed(title="Not Yet Linked", description="Please link your account before submitting a score by using `/link <osu_username>`.", color=discord.Color.orange())
-            await interaction.response.send_message(embed=embed)
-            print_to_console(f"User {interaction.user.id}'s score submit request failed because their account was not yet linked")
-            return
-        elif score.user_id != user_db_row[1]:
+        # Checking if the user is submitting a score from another user
+        if score.user_id != user_db_row[1]:
             user = await osu_api.user(user_db_row[1])
             embed = discord.Embed(title="Invalid User", description=f"Your discord account is linked to {user.username}. The score you are trying to submit is from {score._user.username}.", color=discord.Color.orange())
             await interaction.response.send_message(embed=embed)
             print_to_console(f"User {interaction.user.id}'s score submit request failed because they attempted to submit a score from another user")
             return
-        
+        # Checking if the map is valid
         if await asyncio.to_thread(find_map, score.beatmap_id):
-            if await illegal_mod_detection(score, interaction):
-                print_to_console(f"User {interaction.user.id}'s score submit request failed because there was an illegal mod")
-                return
+            # Checking if the score is set on stable (only lazer scores should have started_at set to something)
             if score.started_at is None:
+                # Checking if the score's mod combo is valid
+                if await illegal_mod_detection(score, interaction):
+                    print_to_console(f"User {interaction.user.id}'s score submit request failed because there was an illegal mod")
+                    return
                 score_submitted = await asyncio.to_thread(insert_score, score)
+                # Checking if the score was successfully submitted
                 if score_submitted:
                     score_data = get_score(score.id)
                     embed = discord.Embed(title="Score Submitted", url=score.beatmap.url, description=f"Successfully submitted **{score.beatmapset.title} [{score.beatmap.version}]** +{score_data[4]}", color=discord.Color.green())
@@ -178,6 +183,7 @@ class Submit(commands.Cog):
     @app_commands.command(name="autosubmit", description=f"Automatically scan and submit valid pass scores ({COOLDOWN_SECONDS//3600} hour cooldown)")
     async def autosubmit(self, interaction: discord.Interaction):
         print_to_console(f"User {interaction.user.id} is attempting to auto submit scores")
+        # Checking if command is on cooldown
         user_disc_id = interaction.user.id
         curr_time = time.time()
         if user_disc_id in user_cooldowns:
@@ -198,7 +204,7 @@ class Submit(commands.Cog):
                 print(f"{resp_str} + actual seconds: {remaining_seconds}")
                 print_to_console(f"User {interaction.user.id}'s auto submit request was denied due to cooldown")
                 return
-        
+        # Checking that the user is linked
         user_db_row = await asyncio.to_thread(search_disc_user, interaction.user.id)
         if user_db_row:
             embed = discord.Embed(title="Auto Submit (0%)", description="Beginning auto submit...", color=discord.Color.yellow())
@@ -211,9 +217,10 @@ class Submit(commands.Cog):
             embed = discord.Embed(title="Auto Submit (0%)", description="Beginning auto submit...", color=discord.Color.yellow())
             await interaction.edit_original_response(embed=embed)
             for map in map_list:
+                # Waiting a couple of seconds so ppy doesn't find where I live and attempts to take revenge for the API (ab)use
                 if map_counter % 20 == 0 and map_counter > 0:
                     print_to_console(f"User {interaction.user.id}'s auto submit request is sleeping to stop API overload")
-                    for i in range(20, 0, -1):
+                    for i in range(10, 0, -1):
                         embed.title = f"Auto Submit ({int((map_counter/map_len)*100)}%)"
                         embed.description = f"Waiting {i} seconds so the osu!api doesn't get mad..."
                         await interaction.edit_original_response(embed=embed)
@@ -226,6 +233,7 @@ class Submit(commands.Cog):
                 await interaction.edit_original_response(embed=embed)
                 best_score:Score = None
                 best_score_pp = -1
+                # Grabbing all scores on the current map set by the user
                 score_list = await osu_api.beatmap_user_scores(map[0], user_db_row[1], legacy_only=True)
                 if not score_list:
                     continue
@@ -238,7 +246,6 @@ class Submit(commands.Cog):
                         if pp and pp > best_score_pp:
                             best_score = score
                             best_score_pp = pp
-                            
                             
                 if best_score:
                     await asyncio.to_thread(insert_score, best_score)
@@ -271,11 +278,13 @@ class Submit(commands.Cog):
     @app_commands.command(name="submit_recent", description="Submit the most recent passed score")
     async def submit_recent(self, interaction: discord.Interaction):
         user_db_row = await asyncio.to_thread(search_disc_user, interaction.user.id)
+        # Checking if user is linked
         if user_db_row:
             recent_score = (await osu_api.user_scores(user_db_row[1], "recent", include_fails=False, mode="osu", limit=1, legacy_only=True))[0]
             if not recent_score:
                 embed = discord.Embed(title="No Scores Found", description="No recent scores found, please try again later", color=discord.Color.orange())
                 await interaction.response.send_message(embed=embed)
+            # Checking if the map is valid
             if await asyncio.to_thread(find_map, recent_score.beatmap_id):
                 if await illegal_mod_detection(recent_score, interaction):
                     print_to_console(f"User {interaction.user.id}'s recent score submission request failed because an illegal mod was found")

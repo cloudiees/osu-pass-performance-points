@@ -15,6 +15,7 @@ class Link(commands.Cog):
     @app_commands.describe(user="Your osu! username")
     async def link(self, interaction: discord.Interaction, user: str):
         print_to_console(f"Trying to link user {interaction.user.id}")
+        # Checking if user is already linked
         if await asyncio.to_thread(search_disc_user, interaction.user.id):
             embed = discord.Embed(title="Already Linked", description="This discord account is already linked to an osu! profile.", color=discord.Color.orange())
             await interaction.response.send_message(embed=embed)
@@ -32,15 +33,14 @@ class Link(commands.Cog):
             await interaction.response.send_message(embed=embed)
             print_to_console(f"User {interaction.user.id}'s link request failed due to API exception")
             return
-        
+        # Checking if user is already linked... again
         if osu_user and await asyncio.to_thread(search_osu_user, osu_user.id):
             embed = discord.Embed(title="Already Linked", description="This osu! profile is already linked to a discord account.", color=discord.Color.orange())
             await interaction.response.send_message(embed=embed)
             print_to_console(f"User {interaction.user.id}'s link request failed because osu! account was already linked")
             return
-
+        # Inserting user into the DB
         await asyncio.to_thread(insert_user, interaction.user.id, osu_user.id, interaction.user.name, osu_user.username)
-
         embed = discord.Embed(title="Successful Link", description=f"Successfully linked to {osu_user.username}!", color=discord.Color.green())
         embed.set_image(url=osu_user.avatar_url)
         await interaction.response.send_message(embed=embed)
@@ -58,6 +58,7 @@ class Link(commands.Cog):
     @app_commands.command(name="unlink", description="Unlink your osu! profile from your discord")
     async def unlink(self, interaction: discord.Interaction):
         print_to_console(f"User {interaction.user.id} is trying to unlink their account")
+        # Checking if user is actually linked
         if await asyncio.to_thread(search_disc_user, interaction.user.id):
             await asyncio.to_thread(delete_user, interaction.user.id)
             embed = discord.Embed(title="Successful Unlink", description=f"Successfully unlinked your discord account.", color=discord.Color.green())
